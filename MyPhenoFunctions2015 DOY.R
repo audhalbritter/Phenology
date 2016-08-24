@@ -80,68 +80,6 @@ CalcSums <- function(dat){
 }
 
 
-# make plots
-pheno15 %>%
-  filter(turfID == "21 TT4 123") %>%
-  filter(nr.f != is.na(nr.f)) %>%
-  group_by(species, doy) %>%
-  ggplot(aes(y = nr.f, x = doy, color = species)) +
-    geom_line() +
-    facet_wrap(~species)
-
-
-
-
-
-#### PLOTTING ####
-
-
-# Multiple plot function
-#
-# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
-# - cols:   Number of columns in layout
-# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
-#
-# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
-# then plot 1 will go in the upper left, 2 will go in the upper right, and
-# 3 will go all the way across the bottom.
-#
-multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
-  library(grid)
-  
-  # Make a list from the ... arguments and plotlist
-  plots <- c(list(...), plotlist)
-  
-  numPlots = length(plots)
-  
-  # If layout is NULL, then use 'cols' to determine layout
-  if (is.null(layout)) {
-    # Make the panel
-    # ncol: Number of columns of plots
-    # nrow: Number of rows needed, calculated from # of cols
-    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
-                     ncol = cols, nrow = ceiling(numPlots/cols))
-  }
-  
-  if (numPlots==1) {
-    print(plots[[1]])
-    
-  } else {
-    # Set up the page
-    grid.newpage()
-    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
-    
-    # Make each plot, in the correct location
-    for (i in 1:numPlots) {
-      # Get the i,j matrix positions of the regions that contain this subplot
-      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
-      
-      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
-                                      layout.pos.col = matchidx$col))
-    }
-  }
-}
-
 
 #### FIGURES ####
 
@@ -314,14 +252,6 @@ MakePlot <- function(dd, control.turf, p.var, p.stage, p.unit){
 
 
 
-#### PLOT ERROR BARS ####
-# x and y are the location of the points, z is the standard error, c the colour
-bars <- function(x,y,z,c){for (k in 1:length(y)) for (i in c(-1, 1)) arrows(x[k], y[k], x[k], y[k]+i*z[k], angle=90, length=0, col=c)}
-bars.y <- function(x,y,z,c){for (l in 1:length(x)) for (j in c(-1, 1)) arrows(x[l], y[l], x[l]+j*z[l], y[l], angle=90, length=0, col=c)}
-
-
-
-
 #### FUNCTIONS TO ANALYSE DATA ####
 
 #### CALCULATE OVERDISPERSION ####
@@ -344,37 +274,6 @@ overdisp_fun <- function(model) {
   prat <- Pearson.chisq/rdf
   pval <- pchisq(Pearson.chisq, df=rdf, lower.tail=FALSE)
   c(chisq=Pearson.chisq,ratio=prat,rdf=rdf,p=pval)
-}
-
-
-#### MODEL SELECTION FUNCITON ####
-modsel <- function(mods,x, phi = 1){  
-  #phi=1
-  dd <- data.frame(Model=1:length(mods), K=1, QAIC=1)
-  for(j in 1:length(mods)){
-    dd$K[j] = attr(logLik(mods[[j]]),"df") # calculate nr of parameters
-    dd$QAIC[j] = QAICc(mods[[j]],phi) # calculate QAIC
-  }
-  dd$delta.i <- dd$QAIC - min(dd$QAIC)
-  dd <- subset(dd,dd$delta.i<x)
-  dd$re.lik <- round(exp(-0.5*dd$delta.i),3)
-  sum.aic <- sum(exp(-0.5*dd$delta.i))
-  wi <- numeric(0)
-  for (i in 1:length(dd$Model)){wi[i] <- round(exp(-0.5*dd$delta.i[i])/sum.aic,3)}
-  dd$wi<-wi
-  print(dds <- dd[order(dd$QAIC), ])
-  assign("mstable",dd,envir=.GlobalEnv)
-}
-
-#### CALCULATE QAICc ####
-QAICc <- function(mod, scale, QAICc = TRUE) {
-  ll <- as.numeric(logLik(mod))
-  df <- attr(logLik(mod), "df")
-  n <- length(resid(mod))
-  if (QAICc)
-    qaic = as.numeric(-2 * ll/scale + 2 * df + 2 * df * (df + 1)/(n - df - 1))
-  else qaic = as.numeric(-2 * ll/scale + 2 * df)
-  qaic
 }
 
 
