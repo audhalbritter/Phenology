@@ -1,0 +1,67 @@
+---
+title: "Climate change effects on phenology in alpine plant communities"
+author: "Aud Halbritter, Ørjan Totland and Vigdis Vandvik"
+date: "Ecosummit 2016"
+output:
+  ioslides_presentation:
+    css: styles.css
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warnings = FALSE)
+
+```
+
+
+
+```{r, echo=FALSE, eval=FALSE}
+library("lme4")
+library("tidyr")
+library("dplyr")
+library("lubridate")
+library("ggplot2")
+source("MyPhenoFunctions2015 DOY.R")
+source("Phenology2015.R")
+source("MakePlot2.R")
+
+```
+
+## Phenology and climate change
+
+
+
+```{r, out.width=500}
+knitr::include_graphics("Fjord.jpg")
+```
+
+Phenology
+Climate change
+Alpine plants
+
+
+## Adaptation and Plasticity
+
+- Aaptation
+- Plasticity
+
+
+## Question
+Do alpine plant communities transplanted along a temperature and precipitation gradient differ in their phenological responses from the origin/destination communities, and to what extent are these differences plastic or genetically determined?
+
+## Hypotheses
+
+
+## Method - SeedClim
+
+```{r}
+
+
+```
+
+## Alpine plant communities are plastic
+
+```{r, echo=FALSE, eval=FALSE}
+
+print(PhenologyPlot1 + theme_grey(base_size = 24) + theme(legend.position= "top")) 
+
+```
+
