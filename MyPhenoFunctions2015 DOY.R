@@ -8,7 +8,7 @@
 ReadInHeadPhenology15 <- function(datasheet, site){
   # import head of data set
   dat.h <- read.csv(datasheet, sep=";", header=FALSE, nrow=3, stringsAsFactors=FALSE)
-  dat.h2 <- do.call(rbind,
+  dat.h2 <- do.call(rbind, 
                     lapply(seq(3,ncol(dat.h),20),function(i){
                       x <- dat.h[ ,c(i)]
                       names(x) <- c("date", "weather", "name")
@@ -17,7 +17,7 @@ ReadInHeadPhenology15 <- function(datasheet, site){
                       x <- c(x,doy=yday(dmy(dat.h[ 1,i])))
                       x
                     })
-  )
+    )
   return(dat.h2)
 }
 
@@ -58,7 +58,7 @@ ReadInBodyPhenology15 <- function(datasheet, site){
   #sapply(dat.long[,c(4:7,9:12,14:17,19:22)],function(x)print(grep("\\D", x = x, value = TRUE))) # Check error messages
   dat.long <- cbind(dat.long[,c(1:3,8,13,18,23:25)],sapply(dat.long[,c(4:7,9:12,14:17,19:22)],as.numeric))
   #dat.long$turfID <- as.factor(dat.long$turfID)
-  dat.long$species <- as.factor(dat.long$species)
+  #dat.long$species <- as.factor(dat.long$species)
   #dat.long$week <- as.factor(dat.long$week)
   #dat.long$Site <- as.factor(dat.long$Site)
   dat.long
@@ -162,94 +162,64 @@ ReshapeToMakeFigure <- function(dd, control.turf, controls){
 # control.truf: destination or origin
 # p.var: peak, end, first, duration
 # p.stage: flower, bud, seed
-MakePlot <- function(dd, control.turf, p.var, p.stage, p.unit){
-  if(control.turf == "destination"){
-    warm <- dd %>%
-      filter(pheno.var == p.var) %>%
-      filter(pheno.stage == p.stage) %>%
-      filter(pheno.unit == p.unit) %>% 
-      ggplot() + 
-      geom_point(aes(x = control, y = TT2, color = factor(destP_level), shape = factor(destT_level)), size = 4) +
-      #geom_errorbar(aes(x = control, ymin=control-TT2_sd, ymax=control+TT2_sd), width=0.1, color = "gray") +
-      geom_abline(intercept = 0, slope = 1, color = "gray", linetype = "dashed") +
-      scale_colour_manual(values = c("lightblue","blue", "darkblue")) +
-      scale_shape_manual(values = c(17,16)) +
-      theme(legend.position="none") +
-      ggtitle("warm") + ylab("Transplant") + xlab("") +
-      geom_text(aes(x = control, y = TT2, label=species),hjust=0, vjust=0)
-    warm + ylim(min(cbind(warm$TT2, warm$TT3, warm$TT4), na.rm = TRUE), max(cbind(warm$TT2, warm$TT3, warm$TT4), na.rm = TRUE))
+MakePlot2 <- function(dd, control.turf, p.var, p.stage, p.unit, title.unit){
+  g <- dd %>%
+    filter(pheno.var == p.var) %>%
+    filter(pheno.stage == p.stage) %>%
+    filter(pheno.unit == p.unit) %>% 
+    mutate(newlabel = plyr::mapvalues(newTT, c("TT2", "TT3", "TT4"), c("Warm", "Wet", "Warm & wet"))) %>%  
+    mutate(newlabel = factor(newlabel, levels = c("Warm", "Wet", "Warm & wet"))) %>% 
+    ggplot(aes(x = control, y = value)) + 
+    geom_errorbar(aes(ymin=value-sdev, ymax=value+sdev), width=0.1, color = "gray") +
+    geom_errorbarh(aes(xmin=control-control_sd, xmax=control+control_sd), height=0.1, color = "gray") +
+    geom_abline(intercept = 0, slope = 1, color = "gray", linetype = "dashed") +
+    scale_shape_manual(name = "Temperature:", labels = c("alpine", "subalpine"), values = c(17,16)) +
+    theme(legend.position= "top") + 
+    ylab(paste("Transplant in ", title.unit)) + xlab(paste("Control in ", title.unit)) +
+    geom_text(aes(x = control, y = value, label=species),hjust=0, vjust=0) +
+    facet_wrap(~ newlabel) +
+    background_grid(major = "xy", minor = "none")
     
-    wet <- dd %>%
-      filter(pheno.var == p.var) %>%
-      filter(pheno.stage == p.stage) %>%
-      filter(pheno.unit == p.unit) %>% 
-      ggplot() + 
-      geom_point(aes(x = control, y = TT3, color = factor(destP_level), shape = factor(destT_level)), size = 4) +
-      geom_abline(intercept = 0, slope = 1, color = "gray", linetype = "dashed") +
-      scale_colour_manual(values = c("lightblue","blue", "darkblue")) +
-      theme(legend.position="none") +
-      ggtitle("wet") + ylab("") + xlab("Control (destination)") +
-      geom_text(aes(x = control, y = TT3, label=species),hjust=0, vjust=0)
-    wet + ylim(min(cbind(wet$TT2, wet$TT3, wet$TT4), na.rm = TRUE), max(cbind(wet$TT2, wet$TT3, wet$TT4), na.rm = TRUE))
+    if(control.turf == "destination"){
+      g + geom_point(aes(color = factor(destP_level), shape = factor(destT_level)), size = 4) +
+        scale_colour_manual(name = "Precipitation:", labels = c("dry", "intermediate", "wet"), values = c("lightblue","blue", "darkblue"))
+      
+    }
+    else if(control.turf == "origin"){
+      g + geom_point(aes(color = factor(Precipitation_level), shape = factor(Temperature_level)), size = 4) +
+      scale_colour_manual(name = "Precipitation:", labels = c("very dry", "dry", "intermediate", "wet"), values = c("white", "lightblue","blue", "darkblue"))
     
-    ww <- dd %>%
-      filter(pheno.var == p.var) %>%
-      filter(pheno.stage == p.stage) %>%
-      filter(pheno.unit == p.unit) %>% 
-      ggplot() + 
-      geom_point(aes(x = control, y = TT4, color = factor(destP_level), shape = factor(destT_level)), size = 4) +
-      geom_abline(intercept = 0, slope = 1, color = "gray", linetype = "dashed") +
-      scale_colour_manual(name = "Precipitation", labels = c("dry", "intermediate", "wet"), values = c("lightblue","blue", "darkblue")) +
-      scale_shape_manual(name = "Temperature", labels = c("alpine", "subalpine"), values = c(17,16)) +
-      theme(legend.position=c(0.2,0.8)) +
-      ggtitle("warm & wet") + ylab("") + xlab("") +
-      geom_text(aes(x = control, y = TT4, label=species),hjust=0, vjust=0, show.legend = FALSE)
-    ww + ylim(min(cbind(ww$TT2, ww$TT3, ww$TT4), na.rm = TRUE), max(cbind(ww$TT2, ww$TT3, ww$TT4), na.rm = TRUE))
   }
-  else if(control.turf == "origin"){
-    warm <- dd %>%
-      filter(pheno.var == p.var) %>%
-      filter(pheno.stage == p.stage) %>%
-      filter(pheno.unit == p.unit) %>% 
-      ggplot() + 
-      geom_point(aes(x = control, y = TT2, color = factor(Precipitation_level), shape = factor(Temperature_level)), size = 4) +
-      geom_abline(intercept = 0, slope = 1, color = "gray", linetype = "dashed") +
-      scale_colour_manual(values = c("white","lightblue","blue", "darkblue")) +
-      scale_shape_manual(values = c(17,16)) +
-      theme(legend.position="none") +
-      ggtitle("warm") + ylab("Transplant") + xlab("") +
-      geom_text(aes(x = control, y = TT2, label=species),hjust=0, vjust=0)
-    
-    wet <- dd %>%
-      filter(pheno.var == p.var) %>%
-      filter(pheno.stage == p.stage) %>%
-      filter(pheno.unit == p.unit) %>% 
-      ggplot() + 
-      geom_point(aes(x = control, y = TT3, color = factor(Precipitation_level), shape = factor(Temperature_level)), size = 4) +
-      geom_abline(intercept = 0, slope = 1, color = "gray", linetype = "dashed") +
-      scale_colour_manual(values = c("white","lightblue","blue", "darkblue")) +
-      scale_shape_manual(values = c(17,16)) +
-      theme(legend.position="none") +
-      ggtitle("wet") + ylab("") + xlab("Control (origin)") +
-      geom_text(aes(x = control, y = TT3, label=species),hjust=0, vjust=0)
-    
-    ww <- dd %>%
-      filter(pheno.var == p.var) %>%
-      filter(pheno.stage == p.stage) %>%
-      filter(pheno.unit == p.unit) %>% 
-      ggplot() + 
-      geom_point(aes(x = control, y = TT4, color = factor(Precipitation_level), shape = factor(Temperature_level)), size = 4) +
-      geom_abline(intercept = 0, slope = 1, color = "gray", linetype = "dashed") +
-      scale_colour_manual(name = "Precipitation", labels = c("very dry", "dry", "intermediate", "wet"), values = c("white","lightblue","blue", "darkblue")) +
-      scale_shape_manual(name = "Temperature", labels = c("alpine", "subalpine"), values = c(17,16)) +
-      theme(legend.position=c(0.8,0.2)) +
-      ggtitle("warm & wet") + ylab("") + xlab("") +
-      geom_text(aes(x = control, y = TT4, label=species),hjust=0, vjust=0, show.legend = FALSE)
-  }
-  
-  multiplot(warm, wet, ww, cols=3)
 }
 
+
+MakeFunctionalGroupPlot2 <- function(dd, control.turf, p.var, p.stage, p.unit, title.unit){
+  g <- dd %>%
+    filter(pheno.var == p.var) %>%
+    filter(pheno.stage == p.stage) %>%
+    filter(pheno.unit == p.unit) %>% 
+    mutate(newlabel = plyr::mapvalues(newTT, c("TT2", "TT3", "TT4"), c("Warm", "Wet", "Warm & wet"))) %>%  
+    mutate(newlabel = factor(newlabel, levels = c("Warm", "Wet", "Warm & wet"))) %>% 
+    ggplot(aes(x = control, y = value)) + 
+    geom_errorbar(aes(ymin=value-sdev, ymax=value+sdev), width=0.1, color = "gray") +
+    geom_errorbarh(aes(xmin=control-control_sd, xmax=control+control_sd), height=0.1, color = "gray") +
+    geom_abline(intercept = 0, slope = 1, color = "gray", linetype = "dashed") +
+    scale_shape_manual(name = "Temperature:", labels = c("alpine", "subalpine"), values = c(17,16)) +
+    theme(legend.position= "top") + 
+    ylab(paste("Transplant in ", title.unit)) + xlab(paste("Control in ", title.unit)) +
+    geom_text(aes(x = control, y = value, label=species),hjust=0, vjust=0) +
+    facet_wrap(~ newlabel) +
+    background_grid(major = "xy", minor = "none")
+    
+    if(control.turf == "destination"){
+      g + geom_point(aes(color = factor(functionalGroup)), size = 4)
+      
+    }
+  else if(control.turf == "origin"){
+    g + geom_point(aes(color = factor(functionalGroup)), size = 4)
+    
+  }
+}
 
 
 #### FUNCTIONS TO ANALYSE DATA ####
