@@ -25,37 +25,57 @@ source("MakePlot2.R")
 
 ```
 
-## Phenology and climate change
+## Phenology and Climate Change
 
 
 
-```{r, out.width=500}
-knitr::include_graphics("Fjord.jpg")
-```
 
 Phenology
 Climate change
 Alpine plants
 
 
-## Adaptation and Plasticity
+## Plasticity and Adaptation
 
 - Aaptation
 - Plasticity
 
+## Study area
+```{r, out.width=500}
+knitr::include_graphics("Fjord.jpg")
+```
+
+## Transplant design
+
+## Recording phenology
 
 ## Question
 Do alpine plant communities transplanted along a temperature and precipitation gradient differ in their phenological responses from the origin/destination communities, and to what extent are these differences plastic or genetically determined?
-
-## Hypotheses
-
-
-## Method - SeedClim
-
-```{r}
-
-
+```{r, out.width=500}
+knitr::include_graphics("Pics_Presentation/TransplantDesign.jpg")
 ```
+
+## Hypotheses - Plasticity
+
+- Communities transplanted to warmer conditions flower earlier than origin community (Brunet et al. Botany 2012, Scheepens and Stöckli Oecologia 2013)
+- Communities transplanted to wetter conditions flower later than origin community (but see Brunet et al. Botany 2012)
+- Communities transplanted to warmer and wetter conditions…
+```{r, out.width=500}
+knitr::include_graphics("Pics_Presentation/TransplantDesign_Plast.jpg")
+```
+
+
+## Hypotheses - Adaptation
+
+- Communities transplanted to warmer conditions (earlier snowmelt) are likely to flower earlier than the destination community (Anderson et al. Proc. R. Soc. B. 2012)
+- Communities transplanted to wetter conditions (later snowmelt) are likely to flower later than the destination community
+- Communities transplanted to warmer and wetter conditions…
+
+
+```{r, out.width=500}
+knitr::include_graphics("Pics_Presentation/TransplantDesign_Adapt.jpg")
+```
+
 
 ## Alpine plant communities are plastic
 
