@@ -16,7 +16,8 @@ OrigDat <- pheno.long %>%
   filter(pheno.stage != "r") %>%
   filter(pheno.var != "duration") %>% 
   mutate(pheno.var = factor(pheno.var, levels = c("first", "peak", "end"))) %>% 
-  mutate(newTT = factor(newTT, levels = c("TT4", "TT3", "TT2", "control"))) %>% 
+  mutate(newTT = plyr::mapvalues(newTT, c("control", "TT2", "TT3", "TT4"), c("control", "Warm", "Wet", "Warm & wet"))) %>%
+  mutate(newTT = factor(newTT, levels = c("control", "Warm", "Wet", "Warm & wet"))) %>% 
   mutate(pheno.stage = plyr::mapvalues(pheno.stage, c("b", "f", "s"), c("Bud", "Flower", "Seed"))) %>%
   mutate(pheno.stage = factor(pheno.stage, levels = c("Bud", "Flower", "Seed"))) %>% 
   mutate(pheno.unit = plyr::mapvalues(pheno.unit, c("doy", "o.snowmelt", "oCumTemp"), c("DOY", "DaySSM", "TempSSM"))) %>%
@@ -32,7 +33,7 @@ OriginSummaryPlot <- ggplot(OrigDat, aes(x = mean, y = newTT, shape = pheno.var,
   #geom_errorbarh(aes(xmin=mean-sd, xmax=mean+sd), height=0.1, color = "gray") +
   facet_grid(~pheno.stage ~ pheno.unit, scales = "free")
 
-OriginSummaryPlot + theme_grey(base_size = 18) + theme(legend.title=element_blank()) 
+OriginSummaryPlot + theme_grey(base_size = 20) + theme(legend.title=element_blank()) 
 
 
 # Function to perform Model and predict new values
@@ -42,7 +43,7 @@ GlmerModelAndPredictOrigin <- function(dd){
   newdat <- expand.grid(
     Temp_value=c(0, 0.6)
     , Prec_value=c(0, 0.2857143, 0.6666667, 1)
-    , newTT=c("control", "TT2", "TT3", "TT4")
+    , newTT=c("control", "Warm", "Wet", "Warm & wet")
     , value = 0
   )
   mm <- model.matrix(terms(modelfit), newdat)
