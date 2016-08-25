@@ -24,11 +24,11 @@ head(pheno.treat.orig)
 
 library("cowplot")
 MakePlot2(pheno.treat.dest, "destination", "first", "f", "dCumTemp", "DOY")
-MakePlot2(pheno.treat.orig, "origin", "first", "f", "oCumTemp", "DOY")
+MakePlot2(pheno.treat.orig, "origin", "duration", "s", "doy", "DOY")
 
 
-PhenologyPlot1 <- 
-# + theme_grey(base_size = 24)+theme(legend.position= "top")
+# Figures for Presentation
+Plot1Plasticity <- MakePlot2(pheno.treat.orig, "origin", "first", "f", "oCumTemp", "DOY") + theme_grey(base_size = 24)+theme(legend.position= "top")
 
 
 ### Plot for functionalGroup
