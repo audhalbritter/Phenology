@@ -34,6 +34,9 @@ pheno15 <- rbind(dat1, dat2, dat3, dat4, dat5, dat6)
 pheno15$week.nr <- as.numeric(pheno15$week) # needs to be outside function, that week.nr across sites is consistent
 pheno15$week.nr2 <- as.numeric(substring(pheno15$week,2))
 #rm(dat1, dat2, dat3, dat4, dat5, dat6)
+# Warning message "failed to parse" is because no measurement in w34 in some sites. Not a problem!
+
+
 
 
 #### CALCULATE SUM OF BUD, FLOWER, SEED AND RIPE SEEDS PER TURFID AND SPECIES ####
@@ -41,7 +44,7 @@ pheno15 <- CalcSums(pheno15)
 
 
 #### READ IN TURFS 2015 ####
-turfs.15 <- read.csv("turfs.csv", sep=";", header=TRUE)
+turfs.15 <- read.csv("turfs.csv", sep=";", header=TRUE, stringsAsFactors=FALSE)
 # rescaling Temp and Prec values
 turfs.15$Prec_value <- (turfs.15$Prec_value-min(turfs.15$Prec_value))/(max(turfs.15$Prec_value) - min(turfs.15$Prec_value))
 turfs.15$Temp_value <- (turfs.15$Temp_value-min(turfs.15$Temp_value))/(max(turfs.15$Temp_value) - min(turfs.15$Temp_value))
@@ -87,15 +90,16 @@ pheno.long$d.snowmelt <- pheno.long$doy - pheno.long$d.dosm
 pheno.long$o.snowmelt <- pheno.long$doy - ifelse(pheno.long$newTT == "control", pheno.long$o.dosm, pheno.long$d.dosm)
 
 #### CALCULATE CUMULATIVE TEMPERATURE SINCE SNOWMELT ####
+# import climate data with cumulative temperature
 climate <- climateData %>% 
   filter(logger=="temp30cm", year==2015) %>% 
   select(site, doy, cumTemp) %>% 
   mutate(site.doy = paste(doy, site, sep="_"))
 
-pheno.long$doy.site <- paste(pheno.long$doy, substr(pheno.long$siteID,1,3), sep="_")
-pheno.long$doy.destsite <- paste(pheno.long$doy, substr(pheno.long$destSiteID,1,3), sep="_")
-pheno.long$dosm.site <- paste(pheno.long$o.dosm, substr(pheno.long$siteID,1,3), sep="_")
-pheno.long$dosm.destsite <- paste(pheno.long$d.dosm, substr(pheno.long$destSiteID,1,3), sep="_")
+pheno.long$doy.site <- paste(pheno.long$doy, pheno.long$siteID, sep="_")
+pheno.long$doy.destsite <- paste(pheno.long$doy, pheno.long$destSiteID, sep="_")
+pheno.long$dosm.site <- paste(pheno.long$o.dosm, pheno.long$siteID, sep="_")
+pheno.long$dosm.destsite <- paste(pheno.long$d.dosm, pheno.long$destSiteID, sep="_")
 
 #destination
 pheno.long$dCumTempFlower <- climate$cumTemp[match(pheno.long$doy.destsite, climate$site.doy)] # CumTemp until FLOWERING
@@ -103,7 +107,7 @@ pheno.long$dCumTempSnow <- climate$cumTemp[match(pheno.long$dosm.destsite, clima
 pheno.long$dCumTemp <- pheno.long$dCumTempFlower - pheno.long$dCumTempSnow # Degree days
 
 #origin
-pheno.long$oCumTempFlower <- climate$cumTemp[match(pheno.long$doy.site, climate$site.doy)] # CumTemp until FLOWERING
+pheno.long$oCumTempFlower <- ifelse(pheno.long$newTT == "control", climate$cumTemp[match(pheno.long$doy.site, climate$site.doy)], climate$cumTemp[match(pheno.long$doy.destsite, climate$site.doy)]) # CumTemp until FLOWERING
 pheno.long$oCumTempSnow <- ifelse(pheno.long$newTT == "control", climate$cumTemp[match(pheno.long$dosm.site, climate$site.doy)], climate$cumTemp[match(pheno.long$dosm.destsite, climate$site.doy)]) # CumTemp until SNOWMELT
 pheno.long$oCumTemp <- pheno.long$oCumTempFlower - pheno.long$oCumTempSnow # Degree days
 
