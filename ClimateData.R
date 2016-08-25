@@ -6,7 +6,7 @@ load("DailyTemperature.Rdata")
 # Rearange temperature data
 dailyT <- dailyTemperature %>% 
   mutate(site = factor(site, levels = c("Skj", "Gud", "Lav", "Ulv", "Ves", "Ram", "Hog", "Alr", "Ovs", "Arh", "Vik", "Fau"))) %>% 
-  mutate(site = plyr::mapvalues(site, from = c("Skj", "Gud", "Lav", "Ulv", "Ves", "Ram", "Hog", "Alr", "Ovs", "Arh", "Vik", "Fau"), to = c("Skjellingahaugen", "Gudmedalen", "Lavisdalen", "Ulvehaugen", "Veskre", "Rambaera", "Hogsete", "Alrust", "Ovstedalen", "Arhelleren", "Vikesland", "Fauske"))) %>% 
+  mutate(site = plyr::mapvalues(site, from = c("Skj", "Gud", "Lav", "Ulv", "Ves", "Ram", "Hog", "Alr", "Ovs", "Arh", "Vik", "Fau"), to = c("Skjellingahaugen", "Gudmedalen", "Lavisdalen", "Ulvehaugen", "Veskre", "Rambera", "Hogsete", "Alrust", "Ovstedalen", "Arhelleren", "Vikesland", "Fauske"))) %>% 
   arrange(logger, site) %>% 
   mutate(doy = yday(date), year = year(date))
 
