@@ -1,4 +1,13 @@
 slides > slide.title-slide {
-     background-image: url("Pics_Presentation/Title.jpg");
-     background-size: 100% 100%;
+    background-image: url("Pics_Presentation/Title.jpg");
+    background-size: 100% 100%;
    }
+   
+slides > slide.title-slide hgroup h1 {
+   font-weight: bold;
+   font-size: 26pt;
+   color: black;
+   position: fixed;
+   top: 20%;
+   left: 5%;
+}
