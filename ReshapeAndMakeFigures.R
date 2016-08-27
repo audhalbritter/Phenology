@@ -23,8 +23,8 @@ head(pheno.treat.orig)
 
 
 library("cowplot")
-MakePlot2(pheno.treat.dest, "destination", "first", "f", "dCumTemp", "DOY")
-MakePlot2(pheno.treat.orig, "origin", "duration", "s", "doy", "DOY")
+MakePlot2(pheno.treat.dest, "destination", "first", "f", "doy", "DOY")
+MakePlot2(pheno.treat.orig, "origin", "first", "f", "doy", "DOY")
 
 
 # Figures for Presentation
