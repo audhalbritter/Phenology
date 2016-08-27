@@ -76,8 +76,13 @@ knitr::include_graphics("Pics_Presentation/TransplantDesign_Adapt.jpg")
 ## Alpine plant communities are plastic
 
 ```{r, echo=FALSE, eval=FALSE}
-
-print(OriginSummaryPlot + theme_grey(base_size = 20) + theme(legend.title=element_blank()))
+plot(cars)
+#print(OriginSummaryPlot + theme_grey(base_size = 20) + theme(legend.title=element_blank()))
 
 ```
 
+
+
+```{r, eval=FALSE}
+plot(cars)
+```
