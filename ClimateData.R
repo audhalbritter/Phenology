@@ -14,9 +14,9 @@ dailyT <- dailyTemperature %>%
 #### calcualte cumsum #### 
 climateData <- dailyT %>% 
   mutate(temp = replace(value, is.na(value), 0)) %>%  # replace NA by zero
+  mutate(temp = replace(value, value < 5, 0)) %>%
   group_by(site, year, logger) %>% 
-  mutate(cumTemp = cumsum(value > 5))
-
+  mutate(cumTemp = cumsum(temp))
 
 
 
