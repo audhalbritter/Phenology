@@ -2,7 +2,9 @@
 ############  MY PHENOLOGY FUNCTIONS 2015 ############
 ######################################################
 
-
+########################
+##### DATA IMPORT ######
+########################
 
 #### READ IN HEAD OF PHENOLOGY DATA 2015 ####
 ReadInHeadPhenology15 <- function(datasheet, site){
@@ -80,8 +82,206 @@ CalcSums <- function(dat){
 }
 
 
+########################
+##### SUBSET DATA ######
+########################
 
-#### FIGURES ####
+### FUNCTION TO SUBSET DATA FOR DIFFERENT TREAMTENES
+# dd = data
+# dat = plastic or adapt
+# treat = warm, wet, ww
+SelectDataForTreatment <- function(dd, dat, treat){
+  if(dat == "plastic"){
+    if(treat == "warm"){
+      treatdat <- dd %>%
+        filter(newTT %in% c("Control", "Warm")) %>%
+        filter(Temperature_level == 1)
+    }
+    if(treat == "wet"){
+      treatdat <- dd %>%
+        filter(newTT %in% c("Control", "Wet")) %>%
+        filter(Precipitation_level %in% c(2,3))
+    }
+    if(treat == "ww"){
+      treatdat <- dd %>%
+        filter(newTT %in% c("Control", "Warm & wet")) %>%
+        filter(Precipitation_level %in% c(2,3)) %>% 
+        filter(Temperature_level == 1)
+    }
+    
+  }
+  if(dat == "adapt"){
+    if(treat == "warm"){
+      treatdat <- dd %>%
+        filter(newTT %in% c("Control", "Warm")) %>%
+        filter(destT_level == 2)
+    }
+    if(treat == "wet"){
+      treatdat <- dd %>%
+        filter(newTT %in% c("Control", "Wet")) %>%
+        filter(destP_level %in% c(3,4))
+    }
+    if(treat == "ww"){
+      treatdat <- dd %>%
+        filter(newTT %in% c("Control", "Warm & wet")) %>%
+        filter(destP_level %in% c(3,4)) %>% 
+        filter(destT_level == 2)
+    }
+  }
+  return(treatdat)
+}
+
+
+
+#### COLORS #####
+precblue <- c("lightskyblue","royalblue2", "royalblue4")
+
+########################
+#####   FIGURES   ######
+########################
+
+### FUNCTION TO MAKE A FIGURE FOR TREATMENTS VS. PHENO.STAGE AND PHENO.VAR PER PHENO.UNIT
+# dd = data (plasticity, adaptation, warm, warmadapt,...)
+# dat = plastic or adapt
+# p.unit = DOY, Days since SM, Temp since SM, Days since SM dest or Temp since SM dest
+PrecLevelPlot <- function(dd, dat, p.unit){
+  dd <- subset(dd, pheno.var != "duration")
+  if(dat == "plastic"){
+    if(p.unit == "DOY"){
+      dd <- subset(dd, pheno.unit == "DOY")
+    }
+    else if(p.unit == "Days since SM"){
+      dd <- subset(dd, pheno.unit == "Days since SM")
+    }
+    else if(p.unit == "Temp since SM"){
+      dd <- subset(dd, pheno.unit == "Temp since SM")
+    }
+    LevelPlot <- dd %>% 
+      #mutate(newTT = factor(newTT, levels = rev(c("Control", "Warm", "Wet", "Warm & wet")))) %>%
+      group_by(Precipitation_level, newTT, pheno.var, pheno.stage) %>% 
+      summarize(mean = mean(value), sd = sd(value)) %>% 
+      ggplot(aes(x = newTT, y = mean, color = factor(Precipitation_level), group = factor(Precipitation_level), ymin = (mean - sd), ymax = (mean + sd))) +
+      geom_errorbar(color = "grey", width = 0.1, position = position_dodge(width = 0.2)) +
+      geom_point(size = 3, position = position_dodge(width = 0.2)) +
+      scale_colour_manual(name = "Precipitation:", labels = c("dry", "intermediate", "wet"), values = precblue) +
+      ylab("Mean value") + xlab("") +
+      ggtitle(p.unit) +
+      facet_grid(pheno.stage ~ pheno.var, scales = "free")
+  } 
+  if(dat == "adapt"){
+    if(p.unit == "DOY"){
+      dd <- subset(dd, pheno.unit == "DOY")
+    }
+    else if(p.unit == "Days since SM dest"){
+      dd <- subset(dd, pheno.unit == "Days since SM dest")
+    }
+    else if(p.unit == "Temp since SM dest"){
+      dd <- subset(dd, pheno.unit == "Temp since SM dest")
+    }
+    LevelPlot <- dd %>% 
+      #mutate(newTT = factor(newTT, levels = rev(c("Control", "Warm", "Wet", "Warm & wet")))) %>%
+      group_by(destP_level, newTT, pheno.var, pheno.stage) %>% 
+      summarize(mean = mean(value), sd = sd(value)) %>% 
+      ggplot(aes(x = newTT, y = mean, color = factor(destP_level), group = factor(destP_level), ymin = (mean - sd), ymax = (mean + sd))) +
+      geom_errorbar(color = "grey", width = 0.1, position = position_dodge(width = 0.2)) +
+      geom_point(size = 3, position = position_dodge(width = 0.2)) +
+      scale_colour_manual(name = "Precipitation:", labels = c("dry", "intermediate", "wet"), values = precblue) +
+      ylab("Mean value") + xlab("") +
+      ggtitle(p.unit) +
+      facet_grid(pheno.stage ~ pheno.var, scales = "free")
+  }  
+  return(LevelPlot)
+}
+
+#### PLOT FOR DURATION
+# dd = data (plasticity, adaptation, warm, warmadapt,...)
+# dat = plastic or adapt
+DurationPlot <- function(dd, dat){
+  dd <- dd %>% 
+    filter(pheno.unit == "DOY", pheno.var == "duration")
+  if(dat == "plastic"){
+    LevelPlot <- dd %>% 
+      #mutate(newTT = factor(newTT, levels = rev(c("Control", "Warm", "Wet", "Warm & wet")))) %>%
+      group_by(Precipitation_level, newTT, pheno.stage) %>% 
+      summarize(mean = mean(value), sd = sd(value)) %>% 
+      ggplot(aes(x = newTT, y = mean, color = factor(Precipitation_level), group = factor(Precipitation_level), ymin = (mean - sd), ymax = (mean + sd))) +
+      geom_errorbar(color = "grey", width = 0.1, position = position_dodge(width = 0.2)) +
+      geom_point(size = 3, position = position_dodge(width = 0.2)) +
+      scale_colour_manual(name = "Precipitation:", labels = c("dry", "intermediate", "wet"), values = precblue) +
+      ylab("Mean value") + xlab("") +
+      facet_wrap(~pheno.stage)
+  } 
+  if(dat == "adapt"){
+    LevelPlot <- dd %>% 
+      #mutate(newTT = factor(newTT, levels = rev(c("Control", "Warm", "Wet", "Warm & wet")))) %>%
+      group_by(destP_level, newTT, pheno.stage) %>% 
+      summarize(mean = mean(value), sd = sd(value)) %>% 
+      ggplot(aes(x = newTT, y = mean, color = factor(destP_level), group = factor(destP_level), ymin = (mean - sd), ymax = (mean + sd))) +
+      geom_errorbar(color = "grey", width = 0.1, position = position_dodge(width = 0.2)) +
+      geom_point(size = 3, position = position_dodge(width = 0.2)) +
+      scale_colour_manual(name = "Precipitation:", labels = c("dry", "intermediate", "wet"), values = precblue) +
+      ylab("Mean value") + xlab("") +
+      facet_wrap(~pheno.stage)
+  } 
+  return(LevelPlot)
+}
+
+
+### FUNCTION TO MAKE A FIGURE FOR PREC AND TEMP LEVELS VS. PHENO.STAGE AND PHENO.VAR PER PHENO.UNIT
+# dd = data (plasticity, adaptation, warm, warmadapt,...)
+# dat = plastic or adapt
+# p.unit = DOY, Days since SM, Temp since SM, Days since SM dest or Temp since SM dest
+PrecTempLevelPlot <- function(dd, dat, p.unit){
+  dd <- subset(dd, pheno.var != "duration")
+  if(dat == "plastic"){
+    if(p.unit == "DOY"){
+      dd <- subset(dd, pheno.unit == "DOY")
+    }
+    else if(p.unit == "Days since SM"){
+      dd <- subset(dd, pheno.unit == "Days since SM")
+    }
+    else if(p.unit == "Temp since SM"){
+      dd <- subset(dd, pheno.unit == "Temp since SM")
+    }
+    LevelPlot <- dd %>% 
+      #mutate(newTT = factor(newTT, levels = rev(c("Control", "Warm", "Wet", "Warm & wet")))) %>%
+      group_by(Precipitation_level, Temperature_level, newTT, pheno.var, pheno.stage) %>% 
+      summarize(mean = mean(value), sd = sd(value)) %>% 
+      ggplot(aes(x = newTT, y = mean, color = factor(Precipitation_level), shape = factor(Temperature_level), group = factor(Precipitation_level), ymin = (mean - sd), ymax = (mean + sd))) +
+      geom_errorbar(color = "grey", width = 0.1, position = position_dodge(width = 0.2)) +
+      geom_point(size = 3, position = position_dodge(width = 0.2)) +
+      scale_shape_manual(name = "Temperature:", labels = c("alpine", "subalpine"), values = c(17,16)) +
+      scale_colour_manual(name = "Precipitation:", labels = c("dry", "intermediate"), values = precblue[1:2]) +
+      ylab("Mean value") + xlab("") +
+      ggtitle(p.unit) +
+      facet_grid(pheno.stage ~ pheno.var, scales = "fixed")
+  } 
+  if(dat == "adapt"){
+    if(p.unit == "DOY"){
+      dd <- subset(dd, pheno.unit == "DOY")
+    }
+    else if(p.unit == "Days since SM dest"){
+      dd <- subset(dd, pheno.unit == "Days since SM dest")
+    }
+    else if(p.unit == "Temp since SM dest"){
+      dd <- subset(dd, pheno.unit == "Temp since SM dest")
+    }
+    LevelPlot <- dd %>% 
+      #mutate(newTT = factor(newTT, levels = rev(c("Control", "Warm", "Wet", "Warm & wet")))) %>%
+      group_by(destP_level, destT_level, newTT, pheno.var, pheno.stage) %>% 
+      summarize(mean = mean(value), sd = sd(value)) %>% 
+      ggplot(aes(x = newTT, y = mean, color = factor(destP_level), shape = factor(destT_level), group = factor(destP_level), ymin = (mean - sd), ymax = (mean + sd))) +
+      geom_errorbar(color = "grey", width = 0.1, position = position_dodge(width = 0.2)) +
+      geom_point(size = 3, position = position_dodge(width = 0.2)) +
+      scale_shape_manual(name = "Temperature:", labels = c("alpine", "subalpine"), values = c(17,16)) +
+      scale_colour_manual(name = "Precipitation:", labels = c("dry", "intermediate"), values = precblue[1:2]) +
+      ylab("Mean value") + xlab("") +
+      ggtitle(p.unit) +
+      facet_grid(pheno.stage ~ pheno.var, scales = "fixed")
+  } 
+  return(LevelPlot)
+}
+
 
 #### FUNCITON TO RESHAPE FOR FIGURES ####
 # Make separate columns for each treatment
@@ -176,7 +376,7 @@ MakePlot2 <- function(dd, control.turf, p.var, p.stage, p.unit, title.unit){
     scale_shape_manual(name = "Temperature:", labels = c("alpine", "subalpine"), values = c(17,16)) +
     theme(legend.position= "top") + 
     ylab(paste("Transplant in ", title.unit)) + xlab(paste("Control in ", title.unit)) +
-    geom_text(aes(x = control, y = value, label=species),hjust=0, vjust=0) +
+    #geom_text(aes(x = control, y = value, label=species),hjust=0, vjust=0) +
     facet_wrap(~ newlabel) +
     background_grid(major = "xy", minor = "none")
     
@@ -222,7 +422,13 @@ MakeFunctionalGroupPlot2 <- function(dd, control.turf, p.var, p.stage, p.unit, t
 }
 
 
-#### FUNCTIONS TO ANALYSE DATA ####
+
+
+
+
+########################
+#####   ANALYSE   ######
+########################
 
 #### CALCULATE OVERDISPERSION ####
 disp <- function(mod,data){
@@ -246,6 +452,36 @@ overdisp_fun <- function(model) {
   c(chisq=Pearson.chisq,ratio=prat,rdf=rdf,p=pval)
 }
 
+
+#function for QAICc. NB, phi is the scaling parameter from the quasi-family model. If using e.g. a poisson family, phi=1 and QAICc returns AICc, or AIC if QAICc=FALSE.
+QAICc <- function(mod, scale, QAICc = TRUE) {
+  ll <- as.numeric(logLik(mod))
+  df <- attr(logLik(mod), "df")
+  n <- length(resid(mod))
+  if (QAICc)
+    qaic = as.numeric(-2 * ll/scale + 2 * df + 2 * df * (df + 1)/(n - df - 1))
+  else qaic = as.numeric(-2 * ll/scale + 2 * df)
+  qaic
+}
+
+### MODSEL
+## code for model selection. First fit mod01, then run this code.
+modsel <- function(mods,x){	
+  phi=1
+  dd <- data.frame(Model=1:length(mods), K=1, QAIC=1)
+  for(j in 1:length(mods)){
+    dd$K[j] = attr(logLik(mods[[j]]),"df")
+    dd$QAIC[j] = QAICc(mods[[j]],phi)
+  }
+  dd$delta.i <- dd$QAIC - min(dd$QAIC)
+  dd <- subset(dd,dd$delta.i<x)
+  dd$re.lik <- round(exp(-0.5*dd$delta.i),3)
+  sum.aic <- sum(exp(-0.5*dd$delta.i))
+  wi <- numeric(0)
+  for (i in 1:length(dd$Model)){wi[i] <- round(exp(-0.5*dd$delta.i[i])/sum.aic,3)}; dd$wi<-wi
+  print(dds <- dd[order(dd$QAIC), ])
+  assign("mstable",dd,envir=.GlobalEnv)
+}
 
 #### CHECK MODELS ####
 fix.check <- function(mod){    #function to produce model-checking plots for the fixed effects of an lmer model
