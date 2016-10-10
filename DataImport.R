@@ -60,68 +60,104 @@ str(turfs.15)
 
 
 #### READ IN TRAITS DATA ####
-traits.15 <- read.csv("trait.csv", sep=";", header=TRUE)
+traits.15 <- read.csv("trait.csv", sep=";", header=TRUE, stringsAsFactors=FALSE)
 str(traits.15)
+
+#### IMPORT CLIMATE DATA WITH CUM TEMP ####
+load(file = "climateData.Rdata", verbose = TRUE)
+climate <- climateData %>% 
+  filter(logger=="temp30cm", year==2015) %>% 
+  select(site, doy, cumTemp) %>% 
+  mutate(site.doy = paste(doy, site, sep="_"))
 
 
 #### CALCULATE FIRST, PEAK, END AND DURATION ####
 ### MAKE LONG DATA SET ###
 pheno.long <- pheno15 %>%
   select(turfID, species, doy, Site, nr.b, nr.f, nr.s, nr.r) %>%
-  gather(key = pheno.stage, value = value, -turfID, -species, -Site, -doy) %>%
+  gather(key = pheno.stage, value = value, -turfID, -species, -Site, -doy) %>% # make variable pheno.stage
   group_by(turfID, species, pheno.stage) %>%  # group by turfID, species and phenological stage to calculate first, end etc for each stage
   mutate(minDoy = min(doy, na.rm = TRUE)) %>% # calculate min doy
   group_by(minDoy, add = TRUE) %>% # add variable but remember the previous groups
   filter(value > 0) %>%
   summarize(first = first(doy), end = last(doy), peak = doy[which.max(value)]) %>%
-  mutate(duration = end-(first-1)) %>%            # calculate duration
   filter(first > minDoy) %>% # remove if plant is flowering in the first week
   ungroup() %>% 
   select(-minDoy) %>% # remove this variable
-  mutate_each(funs(as.numeric), first, peak, end, duration) %>% # make variables numeric (probably not necessary)
+  mutate_each(funs(as.numeric), first, peak, end) %>% # make variables numeric (probably not necessary)
   mutate(pheno.stage = substring(pheno.stage, nchar(pheno.stage), nchar(pheno.stage))) %>%  # take last letter from pheno.stage
-  gather(key = pheno.var, value = doy, -turfID, -species, -pheno.stage) %>% # create pheno.var and gather 4 variable into 1 column
+  gather(key = pheno.var, value = value, -turfID, -species, -pheno.stage) %>% # create pheno.var and gather 4 variable into 1 column
   left_join(turfs.15, by = "turfID") # merge data set with turfs.15
 head(pheno.long)
 
 
-#### CALCULATE EVENT IN DAYS SINCE SNOWMELT
-pheno.long$d.snowmelt <- pheno.long$doy - pheno.long$d.dosm
-pheno.long$o.snowmelt <- pheno.long$doy - ifelse(pheno.long$newTT == "control", pheno.long$o.dosm, pheno.long$d.dosm)
+#### CALCULATE DAYS BETWEEN PHENO.STAGES IN DAYS ####
+### DURATION BETWEEN FIRST AND END OF PHENO.STAGES
+pheno.long <- pheno.long %>% 
+  select(turfID, species, newTT, value, pheno.var, pheno.stage, d.dosm, o.dosm) %>%
+  spread(key = pheno.stage, value = value) %>% 
+  # in days
+  mutate(d.smb = b - d.dosm) %>% 
+  mutate(o.smb = b - ifelse(newTT == "control", o.dosm, d.dosm)) %>% 
+  mutate(bf = f-b, fs = s-f) %>% # calculate difference in days between bud-flower and flower-seed
+  gather(key = pheno.stage, value = value, b, f, r, s, d.smb, o.smb, bf, fs) %>% 
+  mutate(pheno.unit = ifelse(pheno.stage %in% c("d.smb", "o.smb", "bf", "fs"), "days", "doy")) %>% # create variable pheno.unit
+  # calculate duration of stages
+  spread(key = pheno.var, value = value) %>% 
+  mutate(duration = ifelse(pheno.unit == "doy", end-(first-1), NA)) %>% # calculate duration
+  gather(key = pheno.var, value = value, end, first, peak, duration) %>% 
+  mutate(pheno.unit = replace(pheno.unit, pheno.var == "duration", "days")) %>% 
+  filter(!is.na(value))
+
+
+#### CALCULATE EVENT IN DAYS SINCE SNOWMELT ####
+pheno.long <- pheno.long %>% 
+  mutate(d.snowmelt = ifelse(pheno.unit == "doy", value - d.dosm, NA)) %>% 
+  mutate(o.snowmelt = ifelse(pheno.unit == "doy", value - ifelse(newTT == "control", o.dosm, d.dosm), NA))
+
 
 #### CALCULATE CUMULATIVE TEMPERATURE SINCE SNOWMELT ####
-# import climate data with cumulative temperature
-climate <- climateData %>% 
-  filter(logger=="temp30cm", year==2015) %>% 
-  select(site, doy, cumTemp) %>% 
-  mutate(site.doy = paste(doy, site, sep="_"))
+pheno.long <- pheno.long %>% 
+  select(-newTT, -d.dosm, -o.dosm) %>% 
+  left_join(turfs.15, by = "turfID") %>% 
+  mutate(doy.site = paste(value, siteID, sep="_")) %>% 
+  mutate(doy.destsite = paste(value, destSiteID, sep="_")) %>% 
+  mutate(dosm.site = paste(o.dosm, siteID, sep="_")) %>% 
+  mutate(dosm.destsite = paste(d.dosm, destSiteID, sep="_"))
 
-pheno.long$doy.site <- paste(pheno.long$doy, pheno.long$siteID, sep="_")
-pheno.long$doy.destsite <- paste(pheno.long$doy, pheno.long$destSiteID, sep="_")
-pheno.long$dosm.site <- paste(pheno.long$o.dosm, pheno.long$siteID, sep="_")
-pheno.long$dosm.destsite <- paste(pheno.long$d.dosm, pheno.long$destSiteID, sep="_")
-
-#destination
-pheno.long$dCumTempFlower <- climate$cumTemp[match(pheno.long$doy.destsite, climate$site.doy)] # CumTemp until FLOWERING
+# destination
+pheno.long$dCumTempPhenoEvent <- climate$cumTemp[match(pheno.long$doy.destsite, climate$site.doy)] # CumTemp until PHENO EVENT
 pheno.long$dCumTempSnow <- climate$cumTemp[match(pheno.long$dosm.destsite, climate$site.doy)] # CumTemp until SNOWMELT
-pheno.long$dCumTemp <- pheno.long$dCumTempFlower - pheno.long$dCumTempSnow # Degree days
+pheno.long$dCumTemp <- ifelse(pheno.long$pheno.unit == "doy", pheno.long$dCumTempPhenoEvent - pheno.long$dCumTempSnow, NA) # Degree days
 
 #origin
-pheno.long$oCumTempFlower <- ifelse(pheno.long$newTT == "control", climate$cumTemp[match(pheno.long$doy.site, climate$site.doy)], climate$cumTemp[match(pheno.long$doy.destsite, climate$site.doy)]) # CumTemp until FLOWERING
+pheno.long$oCumTempPhenoEvent <- ifelse(pheno.long$newTT == "control", climate$cumTemp[match(pheno.long$doy.site, climate$site.doy)], climate$cumTemp[match(pheno.long$doy.destsite, climate$site.doy)]) # CumTemp until FLOWERING
 pheno.long$oCumTempSnow <- ifelse(pheno.long$newTT == "control", climate$cumTemp[match(pheno.long$dosm.site, climate$site.doy)], climate$cumTemp[match(pheno.long$dosm.destsite, climate$site.doy)]) # CumTemp until SNOWMELT
-pheno.long$oCumTemp <- pheno.long$oCumTempFlower - pheno.long$oCumTempSnow # Degree days
+pheno.long$oCumTemp <- ifelse(pheno.long$pheno.unit == "doy", pheno.long$oCumTempPhenoEvent - pheno.long$oCumTempSnow, NA) # Degree days
 
 
-# create new variable pheno.unit: doy, snowmelt and cumTemp
+# create new variable pheno.unit: doy, snowmelt and cumTemp, days
 pheno.long <- pheno.long %>%
-  select(turfID, species, pheno.stage, pheno.var, doy, d.snowmelt, o.snowmelt, oCumTemp, dCumTemp) %>% 
-  gather(key = pheno.unit, value = value, -turfID, -species, -pheno.stage, -pheno.var) %>%
+  select(turfID, species, pheno.unit, pheno.var, pheno.stage, value, d.snowmelt, o.snowmelt, dCumTemp, oCumTemp) %>% 
+  spread(key = pheno.unit, value = value) %>% 
+  gather(key = pheno.unit, value = value, -pheno.var, -turfID, -species, -pheno.stage) %>%
+  filter(!is.na(value)) %>% 
   left_join(turfs.15, by = "turfID") %>% # add metadata
   left_join(traits.15, by = "species")
-#filter(pheno.unit!="d.snowmelt" & pheno.var != "duration") %>%
-#filter(pheno.unit!="o.snowmelt" & pheno.var != "duration")
 head(pheno.long)
 
 
+#### RENAME VARIABLES ####
+Phenology <- pheno.long %>% 
+  filter(Precipitation_level != 1) %>% #remove turfs transplanted from Ulv and Alr, because they have no control
+  mutate(pheno.var = factor(pheno.var, levels = c("first", "peak", "end", "duration"))) %>% 
+  mutate(newTT = plyr::mapvalues(newTT, c("control", "TT2", "TT3", "TT4"), c("Control", "Warm", "Wet", "WarmWet"))) %>%
+  mutate(newTT = factor(newTT, levels = c("Control", "Warm", "Wet", "WarmWet"))) %>% 
+  mutate(pheno.stage = plyr::mapvalues(pheno.stage, c("b", "f", "s", "r", "o.smb", "d.smb", "bf", "fs"), c("Bud", "Flower", "Seed", "RipeSeed", "SMBud", "SMBudDest", "BudFlower", "FlowerSeed"))) %>%
+  mutate(pheno.stage = factor(pheno.stage, levels = c("Bud", "Flower", "Seed", "RipeSeed", "SMBud", "SMBudDest", "BudFlower", "FlowerSeed"))) %>% 
+  mutate(pheno.unit = plyr::mapvalues(pheno.unit, c("doy", "days", "o.snowmelt", "oCumTemp", "d.snowmelt", "dCumTemp"), c("DOY", "Days", "DaysSinceSM", "TempSinceSM", "DaysSinceSMDest", "TempSinceSMDest"))) %>%
+  mutate(pheno.unit = factor(pheno.unit, levels = c("DOY", "Days", "DaysSinceSM", "TempSinceSM", "DaysSinceSMDest", "TempSinceSMDest"))) %>% 
+  mutate_each(funs(as.factor), species, flowering.time, functionalGroup, occurrence.2)
+
 #### SAVE PHENO.LONG ####
-save(pheno.long, file = "PhenoLong.RData")
+save(Phenology, file = "PhenoLong.RData")
