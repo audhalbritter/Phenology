@@ -18,6 +18,7 @@ climateData <- dailyT %>%
   group_by(site, year, logger) %>% 
   mutate(cumTemp = cumsum(temp))
 
+save(climateData, file = "climateData.Rdata")
 
 
 # PLOT DATA
