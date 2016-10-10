@@ -8,13 +8,12 @@ turfs.15 %>%
   ylab("Day of snowmelt") + xlab("Precipitation level") +
   theme(legend.position= "top") + 
   scale_shape_manual(name = "Temperature:", labels = c("alpine", "subalpine"), values = c(17,16)) +
-  scale_colour_manual(name = "Precipitation:", labels = c("dry", "intermediate", "wet"), values = c("lightblue","blue", "darkblue"))
+  scale_colour_manual(name = "Precipitation:", labels = c("dry", "intermediate", "wet"), values = precblue)
 
 # GRADIENT PLOT
-GradientPlotDOY <- Phenology %>% 
-  filter(pheno.unit == "DOY", newTT == "Control") %>% 
-  filter(pheno.stage != "Ripe seed") %>%
-  filter(pheno.var != "duration") %>% 
+GradientPlotTemp <- Phenology %>% 
+  filter(pheno.unit == "Days", newTT == "Control", !pheno.var == "duration", !pheno.stage == "SMBudDest") %>% 
+  filter(pheno.stage != "RipeSeed") %>%
   group_by(Precipitation_level, Temperature_level, pheno.stage, pheno.var) %>% 
   summarize(mean = mean(value), sd = sd(value)) %>% 
   ggplot(aes(x = Precipitation_level, y = mean, color = factor(Precipitation_level), shape = factor(Temperature_level), group = factor(Temperature_level), ymin = (mean - sd), ymax = (mean + sd))) +
@@ -63,17 +62,33 @@ warmadapt <- SelectDataForTreatment(adaptation, "adapt", "warm")
 ### PLASTICITY
 ### MAKE PLOT PER PREC LEVEL
 PrecLevelPlot(warm, "plastic", "DOY") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
-PrecLevelPlot(warm, "plastic", "Days since SM") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
-PrecLevelPlot(warm, "plastic", "Temp since SM") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
+PrecLevelPlot(warm, "plastic", "Days") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
+PrecLevelPlot(warm, "plastic", "DaysSinceSM") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
+PrecLevelPlot(warm, "plastic", "TempSinceSM") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
+
 
 ### Plot for duration
 DurationPlot(warm, "plastic")
 
 #### ANALYSE PER TREATMENT ####
-dd <- warm %>% filter(pheno.unit == "Temp since SM", pheno.stage == "Bud", pheno.var == "end")
+dd <- SelectData(warm, p.unit = "DOY", p.stage = "Flower", p.var = "first")
 ModelSelectionPhenology(dd = dd, dat = "plastic")
-newdat <- PredictResponsePhenology(dd, "plastic")
-newdat %>% spread(key = newTT, value = value) %>% mutate(diff = Warm - Control)
+PredictResponsePhenology(dd, "plastic")
+
+# Get Predictions
+newvalues <- warm %>% 
+  filter(pheno.unit == "Days") %>% 
+  group_by(pheno.unit, pheno.stage, pheno.var) %>% 
+  do(PredictResponsePhenology(dd=., "plastic"))
+  
+# DIFFERENCE PLOT
+newvalues %>% 
+  group_by(pheno.stage, pheno.var, Precipitation_level) %>% 
+  ggplot(aes(x = pheno.var, y = diff, color = factor(Precipitation_level))) +
+  geom_point(stat = "identity", size = 3) +
+  scale_colour_manual(name = "Precipitation:", labels = c("dry", "intermediate", "wet"), values = precblue) +
+  ylim(-40, 40) +
+  facet_wrap(~pheno.stage)
 
 
 ### ADAPTATION
@@ -91,8 +106,8 @@ newdat %>% spread(key = newTT, value = value) %>% mutate(diff = Warm - Control)
 
 table(warmadapt$species, warmadapt$newTT)
 # interesting sp: Leo.aut, Pin.vul, Car.cap, Ave.fle, Bis.viv, Des.ces, Fes.ovi
-Antodo <- warmadapt %>% filter(species == "Fes.ovi")
-PrecLevelPlot(Antodo, "adapt", "Temp since SM dest") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
+Antodo <- warmadapt %>% filter(species == "Bis.viv")
+PrecLevelPlot(Antodo, "adapt", "DOY") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
 
 
 
@@ -101,7 +116,7 @@ PrecLevelPlot(Antodo, "adapt", "Temp since SM dest") + theme_grey(base_size = 20
 
 ModelSelectionPhenology <- function(dd, dat){
   if(dat == "plastic"){
-    if(unique(dd$pheno.unit) != "Temp since SM"){
+    if(unique(dd$pheno.unit) != "TempSinceSM"){
       # run models
       mod01 <- glmer(value ~ newTT*factor(Precipitation_level) + (1|species), data = dd, family = "poisson")
       mod02 <- glmer(value ~ newTT+factor(Precipitation_level) + (1|species), data = dd, family = "poisson")
@@ -109,7 +124,7 @@ ModelSelectionPhenology <- function(dd, dat){
       mod04 <- glmer(value ~ factor(Precipitation_level) + (1|species), data = dd, family = "poisson")
       mod05 <- glmer(value ~ 1 + (1|species), data = dd, family = "poisson")
     }
-    else if(unique(dd$pheno.unit) == "Temp since SM"){
+    else if(unique(dd$pheno.unit) == "TempSinceSM"){
       mod01 <- lmer(value ~ newTT*factor(Precipitation_level) + (1|species), data = dd)
       mod02 <- lmer(value ~ newTT+factor(Precipitation_level) + (1|species), data = dd)
       mod03 <- lmer(value ~ newTT + (1|species), data = dd)
@@ -118,7 +133,7 @@ ModelSelectionPhenology <- function(dd, dat){
     }
   }
   else if(dat == "adapt"){
-    if(unique(dd$pheno.unit) != "Temp since SM dest"){
+    if(unique(dd$pheno.unit) != "TempSinceSMDest"){
       # run models
       mod01 <- glmer(value ~ newTT*factor(destP_level) + (1|species), data = dd, family = "poisson")
       mod02 <- glmer(value ~ newTT+factor(destP_level) + (1|species), data = dd, family = "poisson")
@@ -126,7 +141,7 @@ ModelSelectionPhenology <- function(dd, dat){
       mod04 <- glmer(value ~ factor(destP_level) + (1|species), data = dd, family = "poisson")
       mod05 <- glmer(value ~ 1 + (1|species), data = dd, family = "poisson")
     }
-    else if(unique(dd$pheno.unit) == "Temp since SM dest"){
+    else if(unique(dd$pheno.unit) == "TempSinceSMDest"){
       mod01 <- lmer(value ~ newTT*factor(destP_level) + (1|species), data = dd)
       mod02 <- lmer(value ~ newTT+factor(destP_level) + (1|species), data = dd)
       mod03 <- lmer(value ~ newTT + (1|species), data = dd)
@@ -145,10 +160,10 @@ ModelSelectionPhenology <- function(dd, dat){
 PredictResponsePhenology <- function(dd, dat){
   # create new data
   if(dat == "plastic"){
-    if(unique(dd$pheno.unit) != "Temp since SM"){
+    if(unique(dd$pheno.unit) != "TempSinceSM"){
       mod01 <- glmer(value ~ newTT*factor(Precipitation_level) + (1|species), data = dd, family = "poisson")
     }
-    else if(unique(dd$pheno.unit) == "Temp since SM"){
+    else if(unique(dd$pheno.unit) == "TempSinceSM"){
       mod01 <- lmer(value ~ newTT*factor(Precipitation_level) + (1|species), data = dd)
     }
     newdat <- expand.grid(
@@ -158,10 +173,10 @@ PredictResponsePhenology <- function(dd, dat){
     )
   }
   else if(dat == "adapt"){
-    if(unique(dd$pheno.unit) != "Temp since SM dest"){
+    if(unique(dd$pheno.unit) != "TempSinceSMDest"){
       mod01 <- glmer(value ~ newTT*factor(destP_level) + (1|species), data = dd, family = "poisson")
     }
-    else if(unique(dd$pheno.unit) == "Temp since SM dest"){
+    else if(unique(dd$pheno.unit) == "TempSinceSMDest"){
       mod01 <- lmer(value ~ newTT*factor(destP_level) + (1|species), data = dd)
     }
     newdat <- expand.grid(
@@ -172,6 +187,7 @@ PredictResponsePhenology <- function(dd, dat){
   }
   mm <- model.matrix(terms(mod01), newdat)
   newdat$value <- predict(mod01, newdat,re.form=NA, type="response")  # re.form=NA without random part; re.form=NULL with random part
+  newdat <- newdat %>% spread(key = newTT, value = value) %>% mutate(diff = Warm - Control)
   return(newdat)
 }
 
@@ -204,7 +220,10 @@ PrecTempLevelPlot(wet, "plastic", "DOY") + theme_grey(base_size = 20) + theme(le
 PrecTempLevelPlot(wet, "plastic", "Days since SM") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
 PrecTempLevelPlot(wet, "plastic", "Temp since SM") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
 
-dd <- wet %>% filter(pheno.unit == "Days since SM", pheno.stage == "Flower", pheno.var == "peak")
+DurationPrecTempPlot(wet, "plastic")
+
+
+dd <- wet %>% filter(pheno.unit == "DOY", pheno.stage == "Seed", pheno.var == "first")
 mod01 <- glmer(value ~ newTT*factor(Precipitation_level)*factor(Temperature_level) + (1|species), data = dd, family = "poisson")
 mod02 <- glmer(value ~ newTT+factor(Precipitation_level)*factor(Temperature_level) + (1|species), data = dd, family = "poisson")
 mod03 <- glmer(value ~ newTT*factor(Precipitation_level)+factor(Temperature_level) + (1|species), data = dd, family = "poisson")
@@ -227,7 +246,9 @@ mm <- model.matrix(terms(mod01), newdat)
 newdat$value <- predict(mod01, newdat,re.form=NA, type="response")
 newdat %>% spread(key = newTT, value = value) %>% mutate(diff = Wet - Control)
 
-dd <- wet %>% filter(pheno.unit == "Days since SM", pheno.stage == "Bud", pheno.var == "first")
+
+# TEMPERATURE SINCE SM
+dd <- wet %>% filter(pheno.unit == "Temp since SM", pheno.stage == "Flower", pheno.var == "first")
 mod01 <- lmer(value ~ newTT*factor(Precipitation_level)*factor(Temperature_level) + (1|species), data = dd)
 mod02 <- lmer(value ~ newTT+factor(Precipitation_level)*factor(Temperature_level) + (1|species), data = dd)
 mod03 <- lmer(value ~ newTT*factor(Precipitation_level)+factor(Temperature_level) + (1|species), data = dd)
@@ -249,7 +270,7 @@ newdat <- expand.grid(
 mm <- model.matrix(terms(mod01), newdat)
 newdat$value <- predict(mod01, newdat,re.form=NA, type="response")
 newdat %>% spread(key = newTT, value = value) %>% mutate(diff = Wet - Control)
-
+hist(dd$value)
 
 PrecTempLevelPlot(wetadapt, "adapt", "DOY") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
 PrecTempLevelPlot(wetadapt, "adapt", "Days since SM") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
@@ -257,10 +278,31 @@ PrecTempLevelPlot(wetadapt, "adapt", "Temp since SM") + theme_grey(base_size = 2
 
 table(wetadapt$species, wetadapt$newTT)
 # interesting sp: Leo.aut, Pin.vul, Car.cap, Ave.fle, Bis.viv, Des.ces, Fes.ovi
-Antodo <- wetadapt %>% filter(species == "Alc.alp")
+Antodo <- wetadapt %>% filter(species == "Pin.vul")
 PrecTempLevelPlot(Antodo, "adapt", "Temp since SM dest") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
 
+dd <- wetadapt %>% filter(pheno.unit == "DOY", pheno.stage == "Bud", pheno.var == "first")
+#mod01 <- glmer(value ~ newTT*factor(Precipitation_level)*factor(Temperature_level) + (1|species), data = dd, family = "poisson")
+mod02 <- glmer(value ~ newTT+factor(Precipitation_level)*factor(Temperature_level) + (1|species), data = dd, family = "poisson")
+#mod03 <- glmer(value ~ newTT*factor(Precipitation_level)+factor(Temperature_level) + (1|species), data = dd, family = "poisson")
+mod04 <- glmer(value ~ newTT+factor(Precipitation_level)+factor(Temperature_level) + (1|species), data = dd, family = "poisson")
+#mod05 <- glmer(value ~ newTT*factor(Precipitation_level) + (1|species), data = dd, family = "poisson")
+mod06 <- glmer(value ~ newTT+factor(Precipitation_level) + (1|species), data = dd, family = "poisson")
+mod07 <- glmer(value ~ newTT*factor(Temperature_level) + (1|species), data = dd, family = "poisson")
+mod08 <- glmer(value ~ newTT+factor(Temperature_level) + (1|species), data = dd, family = "poisson")
+mod09 <- glmer(value ~ newTT + (1|species), data = dd, family = "poisson")
+mod10 <- glmer(value ~ 1 + (1|species), data = dd, family = "poisson")
+modsel(list(mod02, mod04, mod06, mod07, mod08, mod09, mod10), 1000)
 
+newdat <- expand.grid(
+  newTT=c("Control", "Wet")
+  , Precipitation_level=c(2,3)
+  , Temperature_level=c(1,2)
+  , value = 0
+)
+mm <- model.matrix(terms(mod02), newdat)
+newdat$value <- predict(mod02, newdat,re.form=NA, type="response")
+newdat %>% spread(key = newTT, value = value) %>% mutate(diff = Wet - Control)
 
 
 #### WARM & WET TREATMENT ####
@@ -268,6 +310,31 @@ PrecTempLevelPlot(Antodo, "adapt", "Temp since SM dest") + theme_grey(base_size 
 warmwet <- SelectDataForTreatment(plasticity, "plastic", "ww")
 warmwetadapt <- SelectDataForTreatment(adaptation, "adapt", "ww")
 
-PrecTempLevelPlot(warmwet, "plastic", "DOY") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
-PrecTempLevelPlot(warmwet, "plastic", "Days since SM") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
-PrecTempLevelPlot(warmwet, "plastic", "Temp since SM") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
+PrecLevelPlot(warmwet, "plastic", "DOY") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
+PrecLevelPlot(warmwet, "plastic", "Days since SM") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
+PrecLevelPlot(warmwet, "plastic", "Temp since SM") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
+
+
+dd <- warmwet %>% filter(pheno.unit == "DOY", pheno.stage == "Flower", pheno.var == "end")
+mod01 <- glmer(value ~ newTT*factor(Precipitation_level) + (1|species), data = dd, family = "poisson")
+mod02 <- glmer(value ~ newTT+factor(Precipitation_level) + (1|species), data = dd, family = "poisson")
+mod03 <- glmer(value ~ factor(Precipitation_level) + (1|species), data = dd, family = "poisson")
+mod04 <- glmer(value ~ newTT + (1|species), data = dd, family = "poisson")
+mod05 <- glmer(value ~ 1 + (1|species), data = dd, family = "poisson")
+modsel(list(mod01, mod02, mod03, mod04, mod05), 1000)
+
+newdat <- expand.grid(
+  newTT=c("Control", "Warm & wet")
+  , Precipitation_level=c(2,3)
+  , value = 0
+)
+mm <- model.matrix(terms(mod02), newdat)
+newdat$value <- predict(mod02, newdat,re.form=NA, type="response")
+newdat %>% spread(key = newTT, value = value)
+
+
+### ADAPTATION
+PrecLevelPlot(warmwetadapt, "adapt", "DOY") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
+PrecLevelPlot(warmwetadapt, "adapt", "Days since SM") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
+PrecLevelPlot(warmwetadapt, "adapt", "Temp since SM") + theme_grey(base_size = 20) + theme(legend.title=element_blank())
+
