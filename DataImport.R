@@ -153,8 +153,9 @@ Phenology <- pheno.long %>%
   filter(Precipitation_level != 1) %>% #remove turfs transplanted from Ulv and Alr, because they have no control
   mutate(siteID = factor(siteID, levels = c("Lavisdalen", "Gudmedalen", "Skjellingahaugen", "Hogsete", "Rambera", "Veskre"))) %>% 
   mutate(pheno.var = factor(pheno.var, levels = c("first", "peak", "end", "duration"))) %>% 
-  mutate(newTT = plyr::mapvalues(newTT, c("control", "TT2", "TT3", "TT4"), c("Control", "Warm", "Wet", "WarmWet"))) %>%
-  mutate(newTT = factor(newTT, levels = c("Control", "Warm", "Wet", "WarmWet"))) %>% 
+  #mutate(newTT = plyr::mapvalues(newTT, c("control", "TT2", "TT3", "TT4"), c("Control", "Warm", "Wet", "WarmWet"))) %>%
+  mutate(newTT = plyr::mapvalues(newTT, c("control", "TT2", "TT3", "TT4"), c("Control", "Warmer", "LaterSM", "WarmLate"))) %>%
+  mutate(newTT = factor(newTT, levels = c("Control", "Warmer", "LaterSM", "WarmLate"))) %>% 
   mutate(pheno.stage = plyr::mapvalues(pheno.stage, c("b", "f", "s", "r", "o.smb", "d.smb", "bf", "fs"), c("Bud", "Flower", "Seed", "RipeSeed", "SMBud", "SMBudDest", "BudFlower", "FlowerSeed"))) %>%
   mutate(pheno.stage = factor(pheno.stage, levels = c("Bud", "Flower", "Seed", "RipeSeed", "SMBud", "SMBudDest", "BudFlower", "FlowerSeed"))) %>% 
   mutate(pheno.unit = plyr::mapvalues(pheno.unit, c("doy", "days", "o.snowmelt", "oCumTemp", "d.snowmelt", "dCumTemp"), c("DOY", "Days", "DaysSinceSM", "TempSinceSM", "DaysSinceSMDest", "TempSinceSMDest"))) %>%
