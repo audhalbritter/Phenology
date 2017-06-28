@@ -4,11 +4,10 @@
 
 #### LIBRARIES ####
 library("lme4")
-library("tidyr")
-library("dplyr")
+library("tidyverse")
 library("lubridate")
-library("ggplot2")
 
+  
 
 #### READ IN HEAD OF PHENOLOGY DATA 2015 ####
 dath1 <- ReadInHeadPhenology15("DataSheet2015Hog.csv", "Hogsete")
@@ -19,7 +18,7 @@ dath5 <- ReadInHeadPhenology15("DataSheet2015Gud.csv", "Gudmedalen")
 dath6 <- ReadInHeadPhenology15("DataSheet2015Skj.csv", "Skjellingahaugen")
 meta.pheno <- data.frame(rbind(dath1, dath2, dath3, dath4, dath5, dath6))
 meta.pheno$date<-as.Date(meta.pheno$date, format="%d.%m.%Y")
-meta.pheno <- meta.pheno[-c(15,34,42,54),] # should solve this differently
+meta.pheno <- meta.pheno %>% filter(!is.na(date))
 #rm(dath1, dath2, dath3, dath4, dath5, dath6)
 
 
@@ -112,6 +111,8 @@ pheno.long <- pheno.long %>%
 
 #### CALCULATE EVENT IN DAYS SINCE SNOWMELT ####
 pheno.long <- pheno.long %>% 
+  # calculate difference in SM between destination and origin site
+  mutate(SMDiff = d.wsm15.wnr - o.wsm15.wnr) %>% 
   mutate(d.snowmelt = ifelse(pheno.unit == "doy", value - d.dosm, NA)) %>% 
   mutate(o.snowmelt = ifelse(pheno.unit == "doy", value - ifelse(newTT == "control", o.dosm, d.dosm), NA))
 
