@@ -111,8 +111,6 @@ pheno.long <- pheno.long %>%
 
 #### CALCULATE EVENT IN DAYS SINCE SNOWMELT ####
 pheno.long <- pheno.long %>% 
-  # calculate difference in SM between destination and origin site
-  mutate(SMDiff = d.wsm15.wnr - o.wsm15.wnr) %>% 
   mutate(d.snowmelt = ifelse(pheno.unit == "doy", value - d.dosm, NA)) %>% 
   mutate(o.snowmelt = ifelse(pheno.unit == "doy", value - ifelse(newTT == "control", o.dosm, d.dosm), NA))
 
@@ -144,13 +142,16 @@ pheno.long <- pheno.long %>%
   gather(key = pheno.unit, value = value, -pheno.var, -turfID, -species, -pheno.stage) %>%
   filter(!is.na(value)) %>% 
   left_join(turfs.15, by = "turfID") %>% # add metadata
-  left_join(traits.15, by = "species")
+  left_join(traits.15, by = "species") %>% 
+  # calculate difference in SM between destination and origin site
+  mutate(SMDiff = d.wsm15.wnr - o.wsm15.wnr)
 head(pheno.long)
 
 
 #### RENAME VARIABLES ####
 Phenology <- pheno.long %>% 
   filter(Precipitation_level != 1) %>% #remove turfs transplanted from Ulv and Alr, because they have no control
+  mutate(siteID = factor(siteID, levels = c("Lavisdalen", "Gudmedalen", "Skjellingahaugen", "Hogsete", "Rambera", "Veskre"))) %>% 
   mutate(pheno.var = factor(pheno.var, levels = c("first", "peak", "end", "duration"))) %>% 
   mutate(newTT = plyr::mapvalues(newTT, c("control", "TT2", "TT3", "TT4"), c("Control", "Warm", "Wet", "WarmWet"))) %>%
   mutate(newTT = factor(newTT, levels = c("Control", "Warm", "Wet", "WarmWet"))) %>% 
