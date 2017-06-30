@@ -53,6 +53,10 @@ turfs.15$d.date.osm <- dmy(turfs.15$d.date.osm)
 turfs.15$d.dosm <- yday(turfs.15$d.date.osm)
 turfs.15$o.date.osm <- dmy(turfs.15$o.date.osm)
 turfs.15$o.dosm <- yday(turfs.15$o.date.osm)
+
+turfs.15 <- turfs.15 %>% 
+  # calculate difference in SM between destination and origin site
+  mutate(SMDiff = d.wsm15.wnr - o.wsm15.wnr)
 head(turfs.15)
 str(turfs.15)
 # all variables From1To2Temp etc must be numeric
@@ -143,8 +147,6 @@ pheno.long <- pheno.long %>%
   filter(!is.na(value)) %>% 
   left_join(turfs.15, by = "turfID") %>% # add metadata
   left_join(traits.15, by = "species") %>% 
-  # calculate difference in SM between destination and origin site
-  mutate(SMDiff = d.wsm15.wnr - o.wsm15.wnr)
 head(pheno.long)
 
 
@@ -161,6 +163,15 @@ Phenology <- pheno.long %>%
   mutate(pheno.unit = plyr::mapvalues(pheno.unit, c("doy", "days", "o.snowmelt", "oCumTemp", "d.snowmelt", "dCumTemp"), c("DOY", "Days", "DaysSinceSM", "TempSinceSM", "DaysSinceSMDest", "TempSinceSMDest"))) %>%
   mutate(pheno.unit = factor(pheno.unit, levels = c("DOY", "Days", "DaysSinceSM", "TempSinceSM", "DaysSinceSMDest", "TempSinceSMDest"))) %>% 
   mutate_each(funs(as.factor), species, flowering.time, functionalGroup, occurrence.2)
+
+
+#### CREATE METADATA ####
+MetaData <- turfs.15 %>% 
+  select(siteID, blockID, newTT, SMDiff) %>% 
+  mutate(Treatment = plyr::mapvalues(newTT, c("control", "TT2", "TT3", "TT4"), c("Control", "Warmer", "LaterSM", "WarmLate"))) %>%
+  mutate(Treatment = factor(Treatment, levels = c("Control", "Warmer", "LaterSM", "WarmLate"))) %>% 
+  left_join(ClimateContext, by = c("siteID", "Treatment"))
+
 
 #### SAVE PHENO.LONG ####
 save(Phenology, file = "PhenoLong.RData")

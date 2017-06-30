@@ -44,12 +44,6 @@ SMD <- EventDiffData %>%
   group_by(newTT, siteID, species) %>% 
   summarise(SMDiff = mean(SMDiff, na.rm = TRUE))
 
-MetaData <- turfs.15 %>% 
-  select(siteID, blockID, newTT, o.wsm15.wnr, d.wsm15.wnr) %>% 
-  mutate(SMDiff = d.wsm15.wnr - o.wsm15.wnr) %>% 
-  mutate(Treatment = plyr::mapvalues(newTT, c("control", "TT2", "TT3", "TT4"), c("Control", "Warmer", "LaterSM", "WarmLate"))) %>%
-  left_join(ClimateContext, by = c("siteID", "Treatment"))
-
 EventDiffData %>% 
   select(blockID, species, value, siteID, newTT, SMDiff) %>% 
   filter(species == "Ant.odo") %>% 
