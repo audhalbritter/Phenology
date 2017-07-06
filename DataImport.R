@@ -45,18 +45,20 @@ pheno15 <- CalcSums(pheno15)
 #### READ IN TURFS 2015 ####
 turfs.15 <- read.csv("turfs.csv", sep=";", header=TRUE, stringsAsFactors=FALSE)
 # rescaling Temp and Prec values
-turfs.15$Prec_valueRescale <- (turfs.15$Prec_value-min(turfs.15$Prec_value))/(max(turfs.15$Prec_value) - min(turfs.15$Prec_value))
-turfs.15$Temp_valueRescale <- (turfs.15$Temp_value-min(turfs.15$Temp_value))/(max(turfs.15$Temp_value) - min(turfs.15$Temp_value))
-turfs.15$destPrec_valueRescale <- (turfs.15$destPrec_value-min(turfs.15$destPrec_value))/(max(turfs.15$destPrec_value) - min(turfs.15$destPrec_value))
-turfs.15$destTemp_valueRescale <- (turfs.15$destTemp_value-min(turfs.15$destTemp_value))/(max(turfs.15$destTemp_value) - min(turfs.15$destTemp_value))
-turfs.15$d.date.osm <- dmy(turfs.15$d.date.osm)
-turfs.15$d.dosm <- yday(turfs.15$d.date.osm)
-turfs.15$o.date.osm <- dmy(turfs.15$o.date.osm)
-turfs.15$o.dosm <- yday(turfs.15$o.date.osm)
 
 turfs.15 <- turfs.15 %>% 
+  mutate(Prec_valueRescale = (Prec_value - min(Prec_value))/(max(Prec_value) - min(Prec_value))) %>% 
+  mutate(Temp_valueRescale = (Temp_value - min(Temp_value))/(max(Temp_value) - min(Temp_value))) %>%
+  mutate(destPrec_valueRescale = (destPrec_value - min(destPrec_value))/(max(destPrec_value) - min(destPrec_value))) %>% 
+  mutate(destTemp_valueRescale = (destTemp_value - min(destTemp_value))/(max(destTemp_value) - min(destTemp_value))) %>%
+  # calculate day of year of sm
+  mutate(d.date.osm = dmy(d.date.osm)) %>% 
+  mutate(d.dosm = yday(d.date.osm)) %>% 
+  mutate(o.date.osm = dmy(o.date.osm)) %>% 
+  mutate(o.dosm = yday(o.date.osm)) %>% 
   # calculate difference in SM between destination and origin site
   mutate(SMDiff = d.wsm15.wnr - o.wsm15.wnr)
+
 head(turfs.15)
 str(turfs.15)
 # all variables From1To2Temp etc must be numeric
