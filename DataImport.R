@@ -169,8 +169,8 @@ Phenology <- pheno.long %>%
 MetaData <- turfs.15 %>% 
   select(siteID, blockID, newTT, SMDiff) %>% 
   mutate(Treatment = plyr::mapvalues(newTT, c("control", "TT2", "TT3", "TT4"), c("Control", "Warmer", "LaterSM", "WarmLate"))) %>%
-  mutate(Treatment = factor(Treatment, levels = c("Control", "Warmer", "LaterSM", "WarmLate"))) %>% 
-  left_join(ClimateContext, by = c("siteID", "Treatment"))
+  left_join(ClimateContext, by = c("siteID", "Treatment")) %>% 
+  mutate(Treatment = factor(Treatment, levels = c("Control", "Warmer", "LaterSM", "WarmLate")))
 
 
 #### SAVE PHENO.LONG ####
