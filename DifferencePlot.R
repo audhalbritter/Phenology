@@ -1,5 +1,5 @@
 # DIFFERENCE PLOTS FOR 7 COMMON SPECIES
-
+load(file = "PhenoLong.RData")
 library("cowplot")
 
 #### Common species ####
@@ -22,7 +22,7 @@ sp.list <- sort(unique(dd$species))
 # SMDiff by siteID and treatments
 EventDiffData %>% 
   #filter(newTT != "Control") %>% 
-  ggplot(aes(x = SMDiff, y = value, color = newTT, shape = siteID)) +
+  ggplot(aes(x = SMDiff.d, y = value, color = newTT, shape = siteID)) +
   geom_vline(xintercept = 0, color = "grey", linetype = "dashed") +
   geom_jitter() + 
   scale_colour_manual(name = "Treatment:", values = c("grey", "red", "blue", "purple")) +
@@ -34,40 +34,19 @@ EventDiffData %>%
 ### Select species, pheno.unit, etc.
 EventDiffData <- Phenology %>% 
   filter(species %in% sp.list) %>% 
-  filter(siteID != "Veskre" | newTT != "Control") %>% # remove Control at Veskre
-  # remove pheno.stage and .var later
-  filter(pheno.unit == "DaysSinceSM", pheno.stage == "Flower", pheno.var == "first")
+  filter(siteID != "Veskre" | newTT != "Control") # remove Control at Veskre
 
 # Calculate SMDifference within siteID
 SMD <- EventDiffData %>% 
   filter(newTT != "Control") %>% 
   group_by(newTT, siteID, species) %>% 
-  summarise(SMDiff = mean(SMDiff, na.rm = TRUE))
+  summarise(SMDiff = mean(SMDiff.d, na.rm = TRUE))
 
-EventDiffData %>% 
-  select(blockID, species, value, siteID, newTT, SMDiff) %>% 
-  filter(species == "Ant.odo") %>% 
-  group_by(newTT, blockID) %>% 
-  # mean value per treatment, origin and destination site and species
-  summarise(mean = mean(value, na.rm = TRUE)) %>% 
-  spread(key = newTT, value = mean) %>% 
-  filter(!is.na(Control)) %>% 
-  mutate(Warmer = Warmer - Control, LaterSM = LaterSM - Control, WarmLate = WarmLate - Control) %>%
-  select(-Control) %>% 
-  gather(key = Treatment, value = value, -blockID) %>% 
-  filter(!is.na(value)) %>% 
-  left_join(MetaData, by = c("blockID", "newTT")) %>% 
-  ggplot(aes(x = SMDiff, y = value, color = Treatment, shape = Shape, alpha = Alpha)) +
-  geom_hline(yintercept = 0, color = "grey", linetype = "dashed") +
-  geom_point() +
-  scale_colour_manual(name = "Treatment:", values = c("red", "blue", "purple")) +
-  scale_shape_manual(name = "Climate Context:", values = c(1, 16, 16, 17, 17, 15, 15)) +
-  scale_alpha_manual(name = "Climate Context:", values = c(1, 0.5, 1, 0.5, 1, 0.5, 1))
-
-# calc diff. treatment - control
 EventDiff <- EventDiffData %>% 
-  group_by(newTT, siteID, species) %>% 
-  # mean value per treatment, origin and destination site and species
+  select(blockID, species, value, siteID, newTT, SMDiff.d, pheno.unit, pheno.stage, pheno.var) %>% 
+  #filter(species == "Bis.viv") %>% 
+  group_by(newTT, blockID, species, pheno.unit, pheno.stage, pheno.var) %>% 
+  # mean value per treatment, origin and destination site and species 
   summarise(N = n(), mean = mean(value, na.rm = TRUE), se = sd(value, na.rm = TRUE)/sqrt(N)) %>% 
   select(-N) %>% 
   unite(united, mean, se, sep = "_") %>%
@@ -84,36 +63,25 @@ EventDiff <- EventDiffData %>%
   unite(Warmer, Warmer_mean, Warmer_se, sep = "_") %>% 
   unite(LaterSM, LaterSM_mean, LaterSM_se, sep = "_") %>% 
   unite(WarmLate, WarmLate_mean, WarmLate_se, sep = "_") %>% 
-  gather(key = Treatment, value = united, -siteID, -species) %>% 
+  gather(key = Treatment, value = united, -blockID, -species, -pheno.unit, -pheno.stage, -pheno.var) %>% 
   separate(col = united, into = c("mean", "se"), sep = "_", convert = TRUE) %>% 
-  filter(!is.na(mean))
-
-
-ClimateContext <- data_frame(
-  siteID = c("Lavisdalen", "Gudmedalen", "Skjellingahaugen", "Lavisdalen", "Gudmedalen", "Hogsete", "Rambera", "Lavisdalen", "Gudmedalen"),
-  Treatment = c(rep("Warmer", 3), rep("LaterSM", 4), rep("WarmLate", 2)),
-  Shape = c("dry", "intermediate", "wet", "alpine-intermediate", "alpine-wet", "subalpine-intermediate", "subalpine-wet", "dry", "intermediate"),
-  Alpha = c("dry", "intermediate", "wet", "alpine-intermediate", "alpine-wet", "subalpine-intermediate", "subalpine-wet", "dry", "intermediate")
-)
-
-
-EventDiff %>% 
-  left_join(SMD, by = c("siteID", "species", "Treatment" = "newTT")) %>% 
-  left_join(ClimateContext, by = c("siteID", "Treatment")) %>% 
+  filter(!is.na(mean)) %>% # NA's because Controls in some blocks are missing, no flowering plant in some blocks
+  left_join(MetaData, by = c("blockID", "Treatment")) %>% 
+  mutate(Treatment = factor(Treatment)) %>% 
   mutate(Treatment = plyr::mapvalues(Treatment, c("Warmer", "LaterSM", "WarmLate"), c("Warmer", "Later SM", "Warm & late SM"))) %>%
   mutate(Treatment = factor(Treatment, levels = c("Warmer", "Later SM", "Warm & late SM"))) %>%
   mutate(Shape = factor(Shape, levels = c("dry", "intermediate", "wet", "alpine-intermediate", "alpine-wet", "subalpine-intermediate", "subalpine-wet"))) %>%
-  mutate(Alpha = factor(Alpha, levels = c("dry", "intermediate", "wet", "alpine-intermediate", "alpine-wet", "subalpine-intermediate", "subalpine-wet"))) %>%
-  ggplot(aes(x = SMDiff, y = mean, 
-             ymin = mean - se, ymax = mean + se,
-             color = Treatment, shape = Shape, alpha = Alpha)) +
+  mutate(Alpha = factor(Alpha, levels = c("dry", "intermediate", "wet", "alpine-intermediate", "alpine-wet", "subalpine-intermediate", "subalpine-wet")))
+  
+
+EventDiff %>% 
+  filter(pheno.unit == "CumTempSinceSM", pheno.stage == "Flower", pheno.var == "peak") %>% 
+  ggplot(aes(x = SMDiff.d, y = mean, color = Treatment, shape = Shape, alpha = Alpha)) +
   geom_hline(yintercept = 0, color = "grey", linetype = "dashed") +
-  geom_errorbar() +
-  geom_jitter(size = 3) +
+  geom_point() +
+  labs(y = "Difference in phenological event [days/cumtemp] after SMT \n between treatment and origin-control", x = "Difference in SMT between destination and origin site [days]") +
   scale_colour_manual(name = "Treatment:", values = c("red", "blue", "purple")) +
   scale_shape_manual(name = "Climate Context:", values = c(1, 16, 16, 17, 17, 15, 15)) +
   scale_alpha_manual(name = "Climate Context:", values = c(1, 0.5, 1, 0.5, 1, 0.5, 1)) +
-  labs(y = "Difference in onset of flowering [days] after SMT \n between treatment and origin-control", x = "Difference in SMT between destination and origin site [weeks]") +
   facet_wrap(~ species)
-
 
