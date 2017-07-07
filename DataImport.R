@@ -6,6 +6,7 @@
 library("lme4")
 library("tidyverse")
 library("lubridate")
+library("readr")
 
   
 
@@ -40,10 +41,12 @@ pheno15$week.nr2 <- as.numeric(substring(pheno15$week,2))
 
 #### CALCULATE SUM OF BUD, FLOWER, SEED AND RIPE SEEDS PER TURFID AND SPECIES ####
 pheno15 <- CalcSums(pheno15)
+#### SAVE PHENO.15 ####
+save(pheno15, file = "pheno15.RData")
 
 
 #### READ IN TURFS 2015 ####
-turfs.15 <- read.csv("turfs.csv", sep=";", header=TRUE, stringsAsFactors=FALSE)
+turfs.15 <- read_csv2(file = "turfs.csv")
 # rescaling Temp and Prec values
 
 turfs.15 <- turfs.15 %>% 
@@ -57,7 +60,8 @@ turfs.15 <- turfs.15 %>%
   mutate(o.date.osm = dmy(o.date.osm)) %>% 
   mutate(o.dosm = yday(o.date.osm)) %>% 
   # calculate difference in SM between destination and origin site
-  mutate(SMDiff = d.wsm15.wnr - o.wsm15.wnr)
+  mutate(SMDiff.w = d.wsm15.wnr2 - o.wsm15.wnr2) %>% 
+  mutate(SMDiff.d = d.dosm - o.dosm)
 
 head(turfs.15)
 str(turfs.15)
@@ -96,15 +100,26 @@ pheno.long <- pheno15 %>%
 head(pheno.long)
 
 
-#### CALCULATE DAYS BETWEEN PHENO.STAGES IN DAYS ####
+#### CALCULATE EVENT IN DAYS SINCE SNOWMELT ####
+pheno.long <- pheno.long %>% 
+  select(turfID, blockID, destBlockID, species, newTT, value, pheno.var, pheno.stage, d.dosm, o.dosm) %>%
+  mutate(SMdiff = d.dosm - o.dosm) %>% 
+  mutate(dssm = value - d.dosm) %>%
+  mutate(o.dssm = value - ifelse(newTT == "control", o.dosm, d.dosm))
+
+
+
+### NEEDS TO BE CHECKED !!!####
+#### CALCULATE INTERVAL IN DAYS BETWEEN PEAK OF PHENO.STAGES ####
 ### DURATION BETWEEN FIRST AND END OF PHENO.STAGES
 pheno.long <- pheno.long %>% 
   select(turfID, species, newTT, value, pheno.var, pheno.stage, d.dosm, o.dosm) %>%
   spread(key = pheno.stage, value = value) %>% 
-  # in days
-  mutate(d.smb = b - d.dosm) %>% 
-  mutate(o.smb = b - ifelse(newTT == "control", o.dosm, d.dosm)) %>% 
-  mutate(bf = f-b, fs = s-f) %>% # calculate difference in days between bud-flower and flower-seed
+  # Intervall bud - SM
+  mutate(d.smb = ifelse(pheno.var == "peak", b - d.dosm, NA)) %>% 
+  mutate(o.smb = ifelse(pheno.var == "peak", b - ifelse(newTT == "control", o.dosm, d.dosm), NA)) %>% 
+  # Intervall between bud-flower and flower-seed
+  mutate(bf = ifelse(pheno.var == "peak", f - b, NA), fs = ifelse(pheno.var == "peak", s - f, NA)) %>% 
   gather(key = pheno.stage, value = value, b, f, r, s, d.smb, o.smb, bf, fs) %>% 
   mutate(pheno.unit = ifelse(pheno.stage %in% c("d.smb", "o.smb", "bf", "fs"), "days", "doy")) %>% # create variable pheno.unit
   # calculate duration of stages
@@ -115,10 +130,6 @@ pheno.long <- pheno.long %>%
   filter(!is.na(value))
 
 
-#### CALCULATE EVENT IN DAYS SINCE SNOWMELT ####
-pheno.long <- pheno.long %>% 
-  mutate(d.snowmelt = ifelse(pheno.unit == "doy", value - d.dosm, NA)) %>% 
-  mutate(o.snowmelt = ifelse(pheno.unit == "doy", value - ifelse(newTT == "control", o.dosm, d.dosm), NA))
 
 
 #### CALCULATE CUMULATIVE TEMPERATURE SINCE SNOWMELT ####
