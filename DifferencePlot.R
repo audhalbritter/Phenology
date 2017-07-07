@@ -22,7 +22,7 @@ sp.list <- sort(unique(dd$species))
 # SMDiff by siteID and treatments
 EventDiffData %>% 
   #filter(newTT != "Control") %>% 
-  ggplot(aes(x = SMDiff.d, y = value, color = newTT, shape = siteID)) +
+  ggplot(aes(x = SMDiff, y = value, color = newTT, shape = siteID)) +
   geom_vline(xintercept = 0, color = "grey", linetype = "dashed") +
   geom_jitter() + 
   scale_colour_manual(name = "Treatment:", values = c("grey", "red", "blue", "purple")) +
@@ -40,10 +40,10 @@ EventDiffData <- Phenology %>%
 SMD <- EventDiffData %>% 
   filter(newTT != "Control") %>% 
   group_by(newTT, siteID, species) %>% 
-  summarise(SMDiff = mean(SMDiff.d, na.rm = TRUE))
+  summarise(SMDiff = mean(SMDiff, na.rm = TRUE))
 
 EventDiff <- EventDiffData %>% 
-  select(blockID, species, value, siteID, newTT, SMDiff.d, pheno.unit, pheno.stage, pheno.var) %>% 
+  select(blockID, species, value, siteID, newTT, SMDiff, pheno.unit, pheno.stage, pheno.var) %>% 
   #filter(species == "Bis.viv") %>% 
   group_by(newTT, blockID, species, pheno.unit, pheno.stage, pheno.var) %>% 
   # mean value per treatment, origin and destination site and species 
@@ -76,7 +76,7 @@ EventDiff <- EventDiffData %>%
 
 EventDiff %>% 
   filter(pheno.unit == "CumTempSinceSM", pheno.stage == "Flower", pheno.var == "peak") %>% 
-  ggplot(aes(x = SMDiff.d, y = mean, color = Treatment, shape = Shape, alpha = Alpha)) +
+  ggplot(aes(x = SMDiff, y = mean, color = Treatment, shape = Shape, alpha = Alpha)) +
   geom_hline(yintercept = 0, color = "grey", linetype = "dashed") +
   geom_point() +
   labs(y = "Difference in phenological event [days/cumtemp] after SMT \n between treatment and origin-control", x = "Difference in SMT between destination and origin site [days]") +

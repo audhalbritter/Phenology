@@ -60,8 +60,7 @@ turfs.15 <- turfs.15 %>%
   mutate(o.date.osm = dmy(o.date.osm)) %>% 
   mutate(o.dosm = yday(o.date.osm)) %>% 
   # calculate difference in SM between destination and origin site
-  mutate(SMDiff.w = d.wsm15.wnr2 - o.wsm15.wnr2) %>% 
-  mutate(SMDiff.d = d.dosm - o.dosm)
+  mutate(SMDiff = d.dosm - o.dosm)
 
 head(turfs.15)
 str(turfs.15)
@@ -113,7 +112,7 @@ pheno.long <- pheno15 %>%
 
 #### CALCULATE EVENT IN DAYS SINCE SNOWMELT ####
 pheno.long <- pheno.long %>% 
-  select(turfID, blockID, destSiteID, destBlockID, species, newTT, value, pheno.var, pheno.stage, d.dosm, SMDiff.w) %>%
+  select(turfID, blockID, destSiteID, destBlockID, species, newTT, value, pheno.var, pheno.stage, d.dosm, SMDiff) %>%
   mutate(dssm = value - d.dosm) %>% 
   rename(doy = value)
 
@@ -133,9 +132,9 @@ pheno.long <- pheno.long %>%
   mutate(cumtemp = CumTempPhenoEvent - CumTempSM) %>% 
   select(-event.destsite, -dosm.destsite, -CumTempPhenoEvent, -CumTempSM) %>% 
   # pheno.unit
-  gather(key = pheno.unit, value = value, -turfID, -blockID, -destSiteID, -destBlockID, -species, -newTT, -pheno.var, -pheno.stage, -d.dosm, -SMDiff.w) %>% 
+  gather(key = pheno.unit, value = value, -turfID, -blockID, -destSiteID, -destBlockID, -species, -newTT, -pheno.var, -pheno.stage, -d.dosm) %>% 
   # add metadata and traits
-  left_join(turfs.15, by = c("turfID", "blockID", "destBlockID", "newTT", "d.dosm", "SMDiff.w")) %>%
+  left_join(turfs.15, by = c("turfID", "blockID", "destBlockID", "newTT", "d.dosm")) %>%
   left_join(traits.15, by = "species")
 
 
@@ -193,7 +192,7 @@ Phenology <- pheno.long %>%
 
 #### CREATE METADATA ####
 MetaData <- turfs.15 %>% 
-  select(siteID, blockID, newTT, SMDiff.w) %>% 
+  select(siteID, blockID, newTT, SMDiff) %>% 
   mutate(Treatment = plyr::mapvalues(newTT, c("control", "TT2", "TT3", "TT4"), c("Control", "Warmer", "LaterSM", "WarmLate"))) %>%
   left_join(ClimateContext, by = c("siteID", "Treatment")) %>% 
   mutate(Treatment = factor(Treatment, levels = c("Control", "Warmer", "LaterSM", "WarmLate")))
