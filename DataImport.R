@@ -72,6 +72,16 @@ str(turfs.15)
 traits.15 <- read.csv("trait.csv", sep=";", header=TRUE, stringsAsFactors=FALSE)
 str(traits.15)
 
+
+#### CREATE CLIMATE CONTEXT DATA ####
+ClimateContext <- data_frame(
+  siteID = c("Lavisdalen", "Gudmedalen", "Skjellingahaugen", "Lavisdalen", "Gudmedalen", "Hogsete", "Rambera", "Lavisdalen", "Gudmedalen"),
+  Treatment = c(rep("Warmer", 3), rep("LaterSM", 4), rep("WarmLate", 2)),
+  Shape = c("dry", "intermediate", "wet", "alpine-intermediate", "alpine-wet", "subalpine-intermediate", "subalpine-wet", "dry", "intermediate"),
+  Alpha = c("dry", "intermediate", "wet", "alpine-intermediate", "alpine-wet", "subalpine-intermediate", "subalpine-wet", "dry", "intermediate")
+)
+
+
 #### IMPORT CLIMATE DATA WITH CUM TEMP ####
 load(file = "climateData.Rdata", verbose = TRUE)
 climate <- climateData %>% 
@@ -99,43 +109,36 @@ pheno.long <- pheno15 %>%
   mutate(pheno.stage = substring(pheno.stage, nchar(pheno.stage), nchar(pheno.stage))) %>%  # take last letter from pheno.stage
   gather(key = pheno.var, value = value, -turfID, -species, -pheno.stage) %>% # create pheno.var and gather 4 variable into 1 column
   left_join(turfs.15, by = "turfID") # merge data set with turfs.15
-head(pheno.long)
 
 
 #### CALCULATE EVENT IN DAYS SINCE SNOWMELT ####
 pheno.long <- pheno.long %>% 
-  select(turfID, blockID, destBlockID, species, newTT, value, pheno.var, pheno.stage, d.dosm, SMDiff.w) %>%
+  select(turfID, blockID, destSiteID, destBlockID, species, newTT, value, pheno.var, pheno.stage, d.dosm, SMDiff.w) %>%
   mutate(dssm = value - d.dosm) %>% 
-  rename(doy = value) %>% 
-  gather(key = pheno.unit, value = value, -turfID, -blockID, -destBlockID, -species, -newTT, -pheno.var, -pheno.stage, -d.dosm, -SMDiff.w)
+  rename(doy = value)
 
 
 
 #### CALCULATE CUMULATIVE TEMPERATURE SINCE SNOWMELT ####
 pheno.long <- pheno.long %>% 
-  left_join(turfs.15, by = c("turfID", "blockID", "destBlockID", "newTT", "d.dosm", "SMDiff.w")) %>% # add metadata
-  filter(blockID == "Lav5", pheno.var == "first", pheno.stage == "f", pheno.unit == "doy") %>% 
-  select(turfID, blockID, species, newTT, d.dosm, value, destSiteID) %>% 
   # paste event in doy and destSite
-  mutate(event.destsite = paste(value, destSiteID, sep="_")) %>% 
+  mutate(event.destsite = paste(doy, destSiteID, sep="_")) %>% 
   # paste dosm and destSite
   mutate(dosm.destsite = paste(d.dosm, destSiteID, sep="_")) %>% 
   left_join(climate, by = c("event.destsite" = "doy.site")) %>% 
   rename(CumTempPhenoEvent = cumTemp) %>% 
   left_join(climate, by = c("dosm.destsite" = "doy.site")) %>% 
   rename(CumTempSM = cumTemp) %>% 
-  mutate(CumTemp = ifelse(pheno.unit == "doy", CumTempPhenoEvent - CumTempSM, NA)) %>% 
-  select(-event.destsite, -dosm.destsite, -CumTempPhenoEvent, -CumTempSM)
-  
-
-# destination
-pheno.long$dCumTempPhenoEvent <- climate$cumTemp[match(pheno.long$doy.destsite, climate$site.doy)] # CumTemp until PHENO EVENT
-pheno.long$dCumTempSnow <- climate$cumTemp[match(pheno.long$dosm.destsite, climate$site.doy)] # CumTemp until SNOWMELT
-pheno.long$dCumTemp <- ifelse(pheno.long$pheno.unit == "doy", pheno.long$dCumTempPhenoEvent - pheno.long$dCumTempSnow, NA) # Degree days
-
-
-
+  # only calculate for doy, not dssm
+  mutate(cumtemp = CumTempPhenoEvent - CumTempSM) %>% 
+  select(-event.destsite, -dosm.destsite, -CumTempPhenoEvent, -CumTempSM) %>% 
+  # pheno.unit
+  gather(key = pheno.unit, value = value, -turfID, -blockID, -destSiteID, -destBlockID, -species, -newTT, -pheno.var, -pheno.stage, -d.dosm, -SMDiff.w) %>% 
+  # add metadata and traits
+  left_join(turfs.15, by = c("turfID", "blockID", "destBlockID", "newTT", "d.dosm", "SMDiff.w")) %>%
   left_join(traits.15, by = "species")
+
+
 
 
 ####### **************************************************************************
@@ -159,11 +162,6 @@ pheno.long <- pheno.long %>%
   mutate(pheno.unit = replace(pheno.unit, pheno.var == "duration", "days")) %>% 
   filter(!is.na(value))
 
-
-
-
-
-
 # create new variable pheno.unit: doy, snowmelt and cumTemp, days
 pheno.long <- pheno.long %>%
   select(turfID, species, pheno.unit, pheno.var, pheno.stage, value, d.snowmelt, o.snowmelt, dCumTemp, oCumTemp) %>% 
@@ -186,17 +184,16 @@ Phenology <- pheno.long %>%
   mutate(newTT = factor(newTT, levels = c("Control", "Warmer", "LaterSM", "WarmLate"))) %>% 
   mutate(pheno.stage = plyr::mapvalues(pheno.stage, c("b", "f", "s", "r"), c("Bud", "Flower", "Seed", "RipeSeed"))) %>%
   mutate(pheno.stage = factor(pheno.stage, levels = c("Bud", "Flower", "Seed", "RipeSeed"))) %>% 
-  mutate(pheno.unit = plyr::mapvalues(pheno.unit, c("doy", "dssm"), c("DOY", "DaysSinceSM"))) %>%
-  mutate(pheno.unit = factor(pheno.unit, levels = c("DOY", "DaysSinceSM"))) %>% 
+  mutate(pheno.unit = plyr::mapvalues(pheno.unit, c("doy", "dssm", "cumtemp"), c("DOY", "DaysSinceSM", "CumTempSinceSM"))) %>%
+  mutate(pheno.unit = factor(pheno.unit, levels = c("DOY", "DaysSinceSM", "CumTempSinceSM"))) %>% 
   mutate_each(funs(as.factor), species, flowering.time, functionalGroup, occurrence.2)
 
-
 # pheno.stage intervalls: "o.smb", "d.smb", "bf", "fs" = "SMBud", "SMBudDest", "BudFlower", "FlowerSeed"
-# pheno.units: "o.snowmelt", "oCumTemp", "d.snowmelt", "dCumTemp"
+
 
 #### CREATE METADATA ####
 MetaData <- turfs.15 %>% 
-  select(siteID, blockID, newTT, SMDiff) %>% 
+  select(siteID, blockID, newTT, SMDiff.w) %>% 
   mutate(Treatment = plyr::mapvalues(newTT, c("control", "TT2", "TT3", "TT4"), c("Control", "Warmer", "LaterSM", "WarmLate"))) %>%
   left_join(ClimateContext, by = c("siteID", "Treatment")) %>% 
   mutate(Treatment = factor(Treatment, levels = c("Control", "Warmer", "LaterSM", "WarmLate")))
