@@ -8,7 +8,7 @@ dd <- Phenology %>%
   filter(pheno.unit == "DaysSinceSM", pheno.stage == "Flower", pheno.var == "first") %>% 
   select(siteID, species, newTT, value) %>%
   group_by(siteID, species, newTT) %>% 
-  summarise(mean = mean(value)) %>% 
+  summarise(n = n(), mean = mean(value)) %>% 
   spread(key = newTT, value = mean) %>%
   filter(!is.na(Control)) %>% 
   mutate(TooFew = ifelse(is.na(Warmer) & is.na(LaterSM) & is.na(WarmLate), "few", "enough")) %>% 
@@ -17,6 +17,9 @@ dd <- Phenology %>%
   gather(key = Treatment, value = value, -siteID, -species)
 
 sp.list <- sort(unique(dd$species))
+
+# species that occur in one treatment and control in at least 2 blocks
+sp.list <- c("Agr.cap", "Alc.alp", "Alc.sp", "Ant.odo", "Bis.viv", "Cam.rot", "Car.cap", "Nar.str", "Pin.vul", "Pot.ere", "Tha.alp", "Vio.bif")
 
 
 # SMDiff by siteID and treatments
@@ -74,14 +77,41 @@ EventDiff <- EventDiffData %>%
   mutate(Alpha = factor(Alpha, levels = c("dry", "intermediate", "wet", "alpine-intermediate", "alpine-wet", "subalpine-intermediate", "subalpine-wet")))
   
 
+
+
 EventDiff %>% 
-  filter(pheno.unit == "CumTempSinceSM", pheno.stage == "Flower", pheno.var == "peak") %>% 
+  filter(pheno.unit == "DaysSinceSM", pheno.stage == "Flower", pheno.var == "first") %>% 
+  #group_by(species, Treatment) %>%
+  #summarise(n = n()) %>% filter(n > 1) %>% distinct(species)
   ggplot(aes(x = SMDiff, y = mean, color = Treatment, shape = Shape, alpha = Alpha)) +
   geom_hline(yintercept = 0, color = "grey", linetype = "dashed") +
-  geom_point() +
+  geom_jitter() +
   labs(y = "Difference in phenological event [days/cumtemp] after SMT \n between treatment and origin-control", x = "Difference in SMT between destination and origin site [days]") +
   scale_colour_manual(name = "Treatment:", values = c("red", "blue", "purple")) +
   scale_shape_manual(name = "Climate Context:", values = c(1, 16, 16, 17, 17, 15, 15)) +
   scale_alpha_manual(name = "Climate Context:", values = c(1, 0.5, 1, 0.5, 1, 0.5, 1)) +
   facet_wrap(~ species)
+
+
+
+EventDiffData %>% 
+  filter(pheno.unit == "DaysSinceSM", pheno.stage == "Flower", pheno.var == "first") %>% 
+  ggplot(aes(x = SMDiff, y = value, color = newTT)) +
+  geom_smooth(method = 'lm', formula = y ~ x, se = FALSE) +
+  geom_jitter() +
+  labs(y = "Phenological event [days/cumtemp] after SMT", x = "Difference in SMT between destination and origin site [days]") +
+  scale_colour_manual(name = "Treatment:", values = c("grey", "red", "blue", "purple")) +
+  #scale_shape_manual(name = "Climate Context:", values = c(1, 16, 16, 17, 17, 15, 15)) +
+  #scale_alpha_manual(name = "Climate Context:", values = c(1, 0.5, 1, 0.5, 1, 0.5, 1)) +
+  facet_wrap(~ species)
+  
+
+
+ddd <- EventDiffData %>% 
+  filter(pheno.unit == "DaysSinceSM", pheno.stage == "Flower", pheno.var == "first")
+
+fit <- lmer(value ~ newTT + SMDiff + (1|species) + (1|siteID/blockID), ddd)  
+summary(fit)
+
+
 
