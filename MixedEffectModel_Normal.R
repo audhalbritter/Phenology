@@ -11,24 +11,35 @@ cat("
     
     ### LINEAR PREDICTOR, SPECIES SPECIFIC
     
-    mu[i] <- alpha + treatmentCoeff[treatment[i], species[i]] + origBlockCoeff[origBlock[i]]
+    # which of these two options is correct? Or what is the difference
+    mu[i] <- alpha[species[i]] + treatmentCoeff[species[i], treatment[i]] + origBlockCoeff[origBlock[i]]
+    #mu[i] <- alpha[species[i]] + treatmentCoeff[species[i]] * treatment[i] + origBlockCoeff[origBlock[i]]
+
+    # Model including Site; do we need to add a random factor for origin and destination block?
+    #mu[i] <- alpha[species[i]] + treatmentCoeff[species[i], treatment[i], origSite[i], destSite[i]] + blockCoeff[block[i]]
 
     }
     
     ### PRIORS ###
+
     origBlockPrec ~ dgamma(0.001, 0.001)
+    
     tau ~ dgamma(0.001, 0.001)
     
-    ### PRIOR FOR FIXED EFFECTS
-    for(i in 2:NtreatmentLvl){
-      for(j in 1:(NSPLvl-1)){
-      alpha[i, j] ~ dunif(0, 360) # Intercept
-      treatmentCoeff[i, j] ~ dnorm(0, 1/10^2)
-      }
-    }  
-    treatmentCoeff[1] <- 0    
-    spCoeff[NSPLvl] <- 0 
+    for(i in 1:(NSPLvl-1)){    
+      alpha[i] ~ dunif(0, 360) #  random intercept for each sp
+      
+      for(j in 2:NtreatmentLvl){
 
+      treatmentCoeff[i, j] ~ dnorm(mean.treatment[i, j], tau.slope) # random slope
+
+      }
+    }
+
+    treatmentCoeff[1] <- 0    
+  
+    tau.slope <– dgamma(0.001, 0.001)
+    mean.treatment <- dnorm(0, 0.001)
 
 
     ### PRIOR FOR RANDOM EFFECTS
@@ -40,11 +51,6 @@ cat("
 
     ", fill = TRUE)
 sink()
-
-
-#mu[i] <- alpha[species[i]] + treatmentCoeff[species[i], treatment[i], origSite[i], destSite[i]] + blockCoeff[block[i]]
-
-
 
 
 
