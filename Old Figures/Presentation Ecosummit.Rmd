@@ -1,0 +1,91 @@
+---
+title: "Climate change effects on phenology in alpine plant communities"
+author: "Aud Halbritter, Ørjan Totland and Vigdis Vandvik"
+date: "Ecosummit 2016"
+output:
+  ioslides_presentation:
+    css: styles.css
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warnings = FALSE)
+
+```
+
+
+
+```{r, echo=FALSE, eval=TRUE}
+source("Presentation_Ecosummit.R")
+
+
+```
+
+## Phenology and Climate Change
+
+
+
+
+Phenology
+Climate change
+Alpine plants
+
+
+## Plasticity and Adaptation
+
+- Aaptation
+- Plasticity
+
+## Study area
+```{r, out.width=500, fig.retina = 1}
+#knitr::include_graphics("Fjord.jpg")
+
+plot(Phenology$pheno.stage, Phenology$value)
+```
+
+## Transplant design
+
+## Recording phenology
+
+## Question{.columns-2}
+
+
+```{r, out.width=400, fig.retina = 1}
+knitr::include_graphics("Pics_Presentation/TransplantDesign.jpg")
+```
+
+Do alpine plant communities transplanted along a temperature and precipitation gradient differ in their phenological responses from the origin/destination communities, and to what extent are these differences plastic or genetically determined?
+
+## Hypotheses - Plasticity{.columns-2}
+
+
+```{r, out.width=500, fig.retina = 1}
+knitr::include_graphics("Pics_Presentation/TransplantDesign_Plast.jpg")
+```
+
+- Communities transplanted to warmer conditions flower earlier than origin community (Brunet et al. Botany 2012, Scheepens and Stöckli Oecologia 2013)
+- Communities transplanted to wetter conditions flower later than origin community (but see Brunet et al. Botany 2012)
+- Communities transplanted to warmer and wetter conditions…
+
+## Hypotheses - Adaptation{.columns-2}
+
+```{r, out.width=500, fig.retina = 1}
+knitr::include_graphics("Pics_Presentation/TransplantDesign_Adapt.jpg")
+```
+
+- Communities transplanted to warmer conditions (earlier snowmelt) are likely to flower earlier than the destination community (Anderson et al. Proc. R. Soc. B. 2012)
+- Communities transplanted to wetter conditions (later snowmelt) are likely to flower later than the destination community
+- Communities transplanted to warmer and wetter conditions…
+
+
+## Alpine plant communities are plastic
+
+```{r, echo=FALSE, eval=FALSE}
+plot(cars)
+#print(OriginSummaryPlot + theme_grey(base_size = 20) + theme(legend.title=element_blank()))
+
+```
+
+
+
+```{r, eval=FALSE}
+plot(cars)
+```
