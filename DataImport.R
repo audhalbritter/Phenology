@@ -12,12 +12,12 @@ source("MyPhenoFunctions2015 DOY.R")
 source("MyPhenoFunctionsFigures.R")
 
 #### READ IN HEAD OF PHENOLOGY DATA 2015 ####
-dath1 <- ReadInHeadPhenology15("DataSheet2015Hog.csv", "Hogsete")
-dath2 <- ReadInHeadPhenology15("DataSheet2015Ram.csv", "Rambaera")
-dath3 <- ReadInHeadPhenology15("DataSheet2015Ves.csv", "Veskre")
-dath4 <- ReadInHeadPhenology15("DataSheet2015Lav.csv", "Lavisdalen")
-dath5 <- ReadInHeadPhenology15("DataSheet2015Gud.csv", "Gudmedalen")
-dath6 <- ReadInHeadPhenology15("DataSheet2015Skj.csv", "Skjellingahaugen")
+dath1 <- ReadInHeadPhenology15("Data/DataSheet2015Hog.csv", "Hogsete")
+dath2 <- ReadInHeadPhenology15("Data/DataSheet2015Ram.csv", "Rambaera")
+dath3 <- ReadInHeadPhenology15("Data/DataSheet2015Ves.csv", "Veskre")
+dath4 <- ReadInHeadPhenology15("Data/DataSheet2015Lav.csv", "Lavisdalen")
+dath5 <- ReadInHeadPhenology15("Data/DataSheet2015Gud.csv", "Gudmedalen")
+dath6 <- ReadInHeadPhenology15("Data/DataSheet2015Skj.csv", "Skjellingahaugen")
 meta.pheno <- data.frame(rbind(dath1, dath2, dath3, dath4, dath5, dath6))
 meta.pheno$date<-as.Date(meta.pheno$date, format="%d.%m.%Y")
 meta.pheno <- meta.pheno %>% filter(!is.na(date))
@@ -25,12 +25,12 @@ meta.pheno <- meta.pheno %>% filter(!is.na(date))
 
 
 #### READ IN BODY OF PHENOLOGY DATA 2015 ####
-dat1 <- ReadInBodyPhenology15("DataSheet2015Hog.csv", "Hogsete")
-dat2 <- ReadInBodyPhenology15("DataSheet2015Ram.csv", "Rambaera")
-dat3 <- ReadInBodyPhenology15("DataSheet2015Ves.csv", "Veskre")
-dat4 <- ReadInBodyPhenology15("DataSheet2015Lav.csv", "Lavisdalen")
-dat5 <- ReadInBodyPhenology15("DataSheet2015Gud.csv", "Gudmedalen")
-dat6 <- ReadInBodyPhenology15("DataSheet2015Skj.csv", "Skjellingahaugen")
+dat1 <- ReadInBodyPhenology15("Data/DataSheet2015Hog.csv", "Hogsete")
+dat2 <- ReadInBodyPhenology15("Data/DataSheet2015Ram.csv", "Rambaera")
+dat3 <- ReadInBodyPhenology15("Data/DataSheet2015Ves.csv", "Veskre")
+dat4 <- ReadInBodyPhenology15("Data/DataSheet2015Lav.csv", "Lavisdalen")
+dat5 <- ReadInBodyPhenology15("Data/DataSheet2015Gud.csv", "Gudmedalen")
+dat6 <- ReadInBodyPhenology15("Data/DataSheet2015Skj.csv", "Skjellingahaugen")
 pheno15 <- rbind(dat1, dat2, dat3, dat4, dat5, dat6)
 pheno15$week.nr <- as.numeric(pheno15$week) # needs to be outside function, that week.nr across sites is consistent
 pheno15$week.nr2 <- as.numeric(substring(pheno15$week,2))
@@ -45,7 +45,7 @@ pheno15 <- CalcSums(pheno15)
 
 
 #### READ IN TURFS 2015 ####
-turfs.15 <- read.csv("turfs.csv", sep=";", header=TRUE, stringsAsFactors=FALSE)
+turfs.15 <- read.csv("Data/turfs.csv", sep=";", header=TRUE, stringsAsFactors=FALSE)
 
 # rescaling Temp and Prec values
 turfs.15$Prec_valueRescale <- (turfs.15$Prec_value-min(turfs.15$Prec_value))/(max(turfs.15$Prec_value) - min(turfs.15$Prec_value))
@@ -68,7 +68,7 @@ turfs.15 <- turfs.15 %>%
 
 
 #### READ IN TRAITS DATA ####
-traits.15 <- read.csv("trait.csv", sep=";", header=TRUE, stringsAsFactors=FALSE)
+traits.15 <- read.csv("Data/trait.csv", sep=";", header=TRUE, stringsAsFactors=FALSE)
 #str(traits.15)
 
 
