@@ -53,8 +53,8 @@ source("MixedEffectModel_Normal.R")
 #------------------------------------------------------------------------------
 # SPECIFY PARAMETERS
 # Specify parameters for which posterior samples are saved
-para.names <- c("alpha", paste("treatmentCoeff[", 2:4, "]", sep = ""), paste("origBlockCoeff[", 1:30, "]", sep = ""), "tau")
-#para.names <- c("alpha", paste("newTTCoeff[", 2:4, "]", sep = ""), paste("siteCoeff[", 1:2, "]", sep = ""), paste("spCoeff[", 1:20, "]", sep = ""), "tau")
+para.names <- c("alpha", paste("treatmentCoeff[", 2:4, "]", sep = ""), paste("spCoeff[", 1:66, "]", sep = ""), paste("origBlockCoeff[", 1:30, "]", sep = ""), "tau")
+#para.names <- c("alpha", paste("siteCoeff[", 1:2, "]", sep = ""), "tau")
 
 #------------------------------------------------------------------------------
 # RUN ANALYSIS
@@ -64,26 +64,13 @@ jagsModel <- jags.model(file = "TEMPmodel.txt", data = dataList, n.chains = 3, n
 # Continue the MCMC runs with sampling
 Samples <- coda.samples(jagsModel , variable.names = para.names, n.iter = 10000)
 summary(Samples)
-res <- summary(Samples)
 
+
+#------------------------------------------------------------------------------
+# MODEL CHECK
 png(file = "Gelmanplots%d.png", width = 1000, height = 1000)
 gelman.plot(Samples)
 dev.off()
-
-res$statistics
-dd <- as.data.frame(res$quantiles)
-colnames(dd) <- c("twofive", "one_quanter", "median", "three_quarter", "ninetyseven")
-
-dd %>% 
-  rownames_to_column(var = "variable") %>% 
-  filter(grepl("newTT", variable)) %>% 
-  mutate(variable = plyr::mapvalues(variable, c("newTTCoeff[2]", "newTTCoeff[3]", "newTTCoeff[4]"), c("OTC", "Transplant warm", "Transplant cold"))) %>% 
-  mutate(variable = factor(variable, levels = c("OTC", "Transplant warm", "Transplant cold"))) %>% 
-  ggplot(aes(x = variable, y =median, ymin = twofive, ymax = ninetyseven)) +
-  geom_point() +
-  geom_errorbar(width = 0) +
-  geom_hline(yintercept = 0, color = "grey", linetype = "dashed") +
-  labs(x = "", y = "Credible interval")
 
 
 png(file = "Traceplots%d.png", width = 1000, height = 1000)
@@ -92,7 +79,25 @@ dev.off()
 
 gelman.diag(Samples)
 
-library(jagstools)
-res <- jagsresults(x=Samples, params=c('alpha', 'newTTCoeff', 'siteCoeff'))
-res <- data.frame(as.matrix(res))
-res$variable <- row.names(res)
+
+
+#------------------------------------------------------------------------------
+# MODEL OUTPUT
+res <- summary(Samples)
+res$statistics
+
+dd <- as.data.frame(res$quantiles)
+colnames(dd) <- c("Min","oneQuarter", "median", "threeQuarter", "Max")
+
+dd %>% 
+  rownames_to_column(var = "variable") %>% 
+  filter(grepl("treatment", variable)) %>% 
+  mutate(variable = plyr::mapvalues(variable, c("treatmentCoeff[2]", "treatmentCoeff[3]", "treatmentCoeff[4]"), c("Warmer", "LateSM", "WarmLateSM"))) %>% 
+  mutate(variable = factor(variable, levels = c("Warmer", "LateSM", "WarmLateSM"))) %>% 
+  as_tibble() %>% 
+  ggplot(aes(x = variable, y = median, ymin = Min, ymax = Max)) +
+  geom_point() +
+  geom_errorbar(width = 0) +
+  geom_hline(yintercept = 0, color = "grey", linetype = "dashed") +
+  labs(x = "", y = "Credible interval")
+
