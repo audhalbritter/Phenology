@@ -318,12 +318,14 @@ QAICc <- function(mod, scale, QAICc = TRUE) {
   qaic
 }
 
+
 ### MODSEL
 ## code for model selection. First fit mod01, then run this code.
-modsel <- function(mods,x){	
+ModselBlanquart <- function(mods,x){	
   phi=1
   dd <- data.frame(Model=1:length(mods), K=1, QAIC=1)
   for(j in 1:length(mods)){
+    dd$Model <- c("Site + Origin + Symp", "Site + Orig", "Site + Symp", "Origin + Symp", "Site", "Origin", "Symp", "Null")
     dd$K[j] = attr(logLik(mods[[j]]),"df")
     dd$QAIC[j] = QAICc(mods[[j]],phi)
   }
@@ -333,8 +335,15 @@ modsel <- function(mods,x){
   sum.aic <- sum(exp(-0.5*dd$delta.i))
   wi <- numeric(0)
   for (i in 1:length(dd$Model)){wi[i] <- round(exp(-0.5*dd$delta.i[i])/sum.aic,3)}; dd$wi<-wi
-  print(dds <- dd[order(dd$QAIC), ])
-  assign("mstable",dd,envir=.GlobalEnv)
+  dd$wH <- dd$wi
+  dd$wH[5] <- dd$wi[1]+dd$wi[2]+dd$wi[3]+dd$wi[5]
+  dd$wH[6] <- dd$wi[1]+dd$wi[2]+dd$wi[4]+dd$wi[6]
+  dd$wH[7] <- dd$wi[1]+dd$wi[3]+dd$wi[4]+dd$wi[7]
+  dd$ER <- dd$wH/(1-dd$wH)
+  #print(dds <- dd[order(dd$QAIC), ]) # do not want to print it
+  dds <- dd[order(dd$QAIC), ]
+  return(dds)
+  #assign("mstable",dds,envir=.GlobalEnv)
 }
 
 #### CHECK MODELS ####
