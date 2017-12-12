@@ -38,7 +38,7 @@ cat("
 
     treatmentCoeff[1] <- 0    
   
-    tau.slope <– dgamma(0.001, 0.001)
+    tau.slope <- dgamma(0.001, 0.001)
     mean.treatment <- dnorm(0, 0.001)
 
 
@@ -54,14 +54,14 @@ sink()
 
 
 
-for(i in 1:(NdestSiteLvl-1)){
-  destSiteCoeff[i] ~ dnorm(0, 1/10^2)
-}
-destSiteCoeff[NdestSiteLvl] <- 0
+#for(i in 1:(NdestSiteLvl-1)){
+#  destSiteCoeff[i] ~ dnorm(0, 1/10^2)
+#}
+#destSiteCoeff[NdestSiteLvl] <- 0
 
-for(i in 1:(NorigSiteLvl-1)){
-  origSiteCoeff[i] ~ dnorm(0, 1/10^2)
-}
-origSiteiteCoeff[NorigSiteLvl] <- 0
+#for(i in 1:(NorigSiteLvl-1)){
+#  origSiteCoeff[i] ~ dnorm(0, 1/10^2)
+#}
+#origSiteiteCoeff[NorigSiteLvl] <- 0
 
   
