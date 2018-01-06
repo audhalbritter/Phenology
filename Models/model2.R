@@ -1,8 +1,6 @@
 ### FLOWERING ~ TREATMENT + ORIGINSITE + DESTSITE + (TREATMENT + SITE|SPECIES) + (1|Block) ###
 
-# JD: A few general changes that were necessary:
-# took out some of the data that are not used. In JAGS, all variables entered in the data have to be used somehow in the model
-# distributions need tilde instead of arrow
+# model2: 
 
 model{
   ### LIKELIHOOD
