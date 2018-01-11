@@ -104,10 +104,13 @@ pheno.long <- pheno15 %>%
   filter(first > minDoy) %>% # remove if plant is flowering in the first week
   ungroup() %>% 
   select(-minDoy) %>% # remove this variable
-  mutate_each(funs(as.numeric), first, peak, end) %>% # make variables numeric (probably not necessary)
+  mutate_at(c("first", "peak", "end"), funs(as.numeric)) %>% # make variables numeric (probably not necessary)
   mutate(pheno.stage = substring(pheno.stage, nchar(pheno.stage), nchar(pheno.stage))) %>%  # take last letter from pheno.stage
   gather(key = pheno.var, value = value, -turfID, -species, -pheno.stage) %>% # create pheno.var and gather 4 variable into 1 column
-  left_join(turfs.15, by = "turfID") # merge data set with turfs.15
+  left_join(turfs.15, by = "turfID") %>%  # merge data set with turfs.15
+  # calculate average value for all controls
+  group_by(species, pheno.stage, pheno.var, newTT, blockID) %>% 
+  mutate(value = mean(value))
 
 
 #### CALCULATE EVENT IN DAYS SINCE SNOWMELT ####
@@ -178,6 +181,7 @@ head(pheno.long)
 
 #### RENAME VARIABLES ####
 Phenology <- pheno.long %>% 
+  ungroup() %>% 
   left_join(turfs.15, by = c("turfID", "blockID", "destSiteID", "destBlockID", "newTT", "d.dosm", "SMDiff")) %>% 
   filter(Precipitation_level != 1) %>% #remove turfs transplanted from Ulv and Alr, because they have no control
   mutate(siteID = factor(siteID, levels = c("Lavisdalen", "Gudmedalen", "Skjellingahaugen", "Hogsete", "Rambera", "Veskre"))) %>% 
@@ -187,14 +191,17 @@ Phenology <- pheno.long %>%
   mutate(newTT = factor(newTT, levels = c("Control", "Warmer", "LaterSM", "WarmLate"))) %>% 
   mutate(pheno.stage = plyr::mapvalues(pheno.stage, c("b", "f", "s", "r"), c("Bud", "Flower", "Seed", "RipeSeed"))) %>%
   mutate(pheno.stage = factor(pheno.stage, levels = c("Bud", "Flower", "Seed", "RipeSeed"))) %>% 
-  mutate(pheno.unit = plyr::mapvalues(pheno.unit, c("doy", "dssm", "cumtemp"), c("DOY", "DaysSinceSM", "CumTempSinceSM"))) %>%
-  mutate(pheno.unit = factor(pheno.unit, levels = c("DOY", "DaysSinceSM", "CumTempSinceSM")))
+  mutate(pheno.unit = plyr::mapvalues(pheno.unit, c("doy", "dssm"), c("DOY", "DaysSinceSM"))) %>%
+  #mutate(pheno.unit = plyr::mapvalues(pheno.unit, c("doy", "dssm", "cumtemp"), c("DOY", "DaysSinceSM", "CumTempSinceSM"))) %>%
+  mutate(pheno.unit = factor(pheno.unit, levels = c("DOY", "DaysSinceSM")))
+  #mutate(pheno.unit = factor(pheno.unit, levels = c("DOY", "DaysSinceSM", "CumTempSinceSM")))
   #mutate_each(funs(as.factor), species, flowering.time, functionalGroup, occurrence.2)
 
 # pheno.stage intervalls: "o.smb", "d.smb", "bf", "fs" = "SMBud", "SMBudDest", "BudFlower", "FlowerSeed"
 
 
 #### CREATE METADATA ####
+# maybe need to take out multiple controls (TT1, P1,...)
 MetaData <- turfs.15 %>% 
   select(siteID, blockID, newTT, SMDiff) %>% 
   mutate(Treatment = plyr::mapvalues(newTT, c("control", "TT2", "TT3", "TT4"), c("Control", "Warmer", "LaterSM", "WarmLate"))) %>%
@@ -203,7 +210,7 @@ MetaData <- turfs.15 %>%
 
 
 #### SAVE PHENO.LONG ####
-save(Phenology, file = "PhenoLong.RData")
+save(Phenology, file = "180111_PhenoLong.RData")
 
 
 
