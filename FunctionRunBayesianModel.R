@@ -19,10 +19,10 @@ RunBayesianAnalysis <- function(dat, phenostage, phenovar, phenounit, niter, nbu
     # subset
     filter(pheno.stage == phenostage, pheno.var == phenovar, pheno.unit == phenounit) %>% 
     select(value, newTT, species, siteID, destSiteID, blockID, destBlockID) %>% 
-    select(value, newTT, species, siteID, destSiteID, blockID, destBlockID) %>% 
     rename(treatment = newTT, origSiteID = siteID, origBlockID = blockID) %>% 
     mutate(treatment = factor(treatment, levels = c("Control", "Warmer", "LaterSM", "WarmLate"))) %>% 
-    mutate(treatment = as.numeric(treatment), origSiteID = as.numeric(origSiteID), species = as.numeric(factor(species)), origSiteID = as.numeric(origSiteID), destSiteID = as.numeric(factor(destSiteID)), origBlockID = as.numeric(factor(origBlockID)), destBlockID = as.numeric(factor(destBlockID)))
+    mutate(treatment = as.numeric(treatment), origSiteID = as.numeric(origSiteID), species = as.numeric(factor(species)), origSiteID = as.numeric(origSiteID), destSiteID = as.numeric(factor(destSiteID)), origBlockID = as.numeric(factor(origBlockID)), destBlockID = as.numeric(factor(destBlockID))) %>% 
+    arrange(treatment, species)
   
   myData <- as.data.frame(myData)
   
@@ -61,7 +61,7 @@ RunBayesianAnalysis <- function(dat, phenostage, phenovar, phenounit, niter, nbu
                         )
   
   # unique name
-  modname = paste("mod", phenostage, phenovar, sep = "")
+  modname = paste("mod", phenostage, phenovar, phenounit, sep = "")
   
   #------------------------------------------------------------------------------
   # SPECIFY PARAMETERS
@@ -82,7 +82,7 @@ RunBayesianAnalysis <- function(dat, phenostage, phenovar, phenounit, niter, nbu
   nc <- nchain			## number of chains
   
   # Specify parameters for which posterior samples are saved
-  para.names1 <- c("treatment.contrast","treatmentCoeff","blockCoeff") # "alpha"
+  para.names1 <- c("treatmentCoeff","blockCoeff") # "alpha", "treatment.contrast"
   
   
   #------------------------------------------------------------------------------
@@ -108,11 +108,11 @@ RunBayesianAnalysis <- function(dat, phenostage, phenovar, phenounit, niter, nbu
   #------------------------------------------------------------------------------
   # MODEL CHECK
   
-  pdf(file="ModelCheck/mod1.JAGS.diagnostic.pdf", width = 12, height = 10)
-  par(mar=c(4,2,2,1))
-  plot(mod)
-  plot(mod.mcmc)
-  dev.off()
+  #pdf(file="ModelCheck/mod1.JAGS.diagnostic.pdf", width = 12, height = 10)
+  #par(mar=c(4,2,2,1))
+  #plot(mod)
+  #plot(mod.mcmc)
+  #dev.off()
   
   #------------------------------------------------------------------------------
   # OUTPUT
