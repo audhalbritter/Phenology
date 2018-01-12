@@ -197,7 +197,7 @@ RunBayesianAnalysis(# Data input
                     nburn = 5000, 
                     nthin = 5,
                     nchain = 3, 
-                    mod = "Models/model4.R")
+                    mod = "Models/model1.R")
 
 
 #------------------------------------------------------------------------------
