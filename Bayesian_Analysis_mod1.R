@@ -100,7 +100,7 @@ mod1 <-jags(dataList.mod1,
                  para.names1, 
                  n.thin=thin.rate, 
                  n.chains=nc, n.burnin=n.burn, n.iter=n.iterations,
-                 model.file="model1.R")
+                 model.file="Models/model1.R")
 
 
 mod1
@@ -158,4 +158,76 @@ dd %>%
   geom_errorbar(width = 0) +
   geom_hline(yintercept = 0, color = "grey", linetype = "dashed") +
   labs(x = "", y = "Credible interval")
+
+
+
+
+
+
+
+
+#####################################################################################
+#### RUN MODEL AUTOMATIC ####
+#------------------------------------------------------------------------------
+# PREPARE AND LOAD LIBRARIES AND DATA
+
+graphics.off() # This closes all of R's graphics windows.
+rm(list=ls())  # Careful! This clears all of R's memory!
+
+# load libraries
+library("tidyverse")
+library("rjags")
+library("R2jags")
+library("lme4")
+
+load(file = "180111_PhenoLong.RData")
+source("FunctionRunBayesianModel.R")
+
+#------------------------------------------------------------------------------
+# RUN ANALYSIS
+
+RunBayesianAnalysis(# Data input
+                    dat = Phenology, 
+                    phenostage = "Flower", 
+                    phenovar = "peak", 
+                    phenounit = "DaysSinceSM",
+  
+                    # Running analysis
+                    niter = 10000, 
+                    nburn = 5000, 
+                    nthin = 5,
+                    nchain = 3, 
+                    mod = "Models/model4.R")
+
+
+#------------------------------------------------------------------------------
+# OUTPUT
+
+load(file = "ModelOutput/modFlowerpeakDaysSinceSM.RData", verbose = TRUE)
+dd <- res %>% 
+  rownames_to_column(var = "variable") %>% 
+  filter(grepl("treatmentCoeff", var))
+
+  
+ 
+res %>% 
+  rownames_to_column(var = "variable") %>% 
+  filter(grepl("treatmentCoeff", variable)) %>% 
+  bind_cols(meta) %>% 
+  inner_join(dd, by = c("treatment", "species")) %>% 
+  group_by(treatment) %>% 
+  summarise(mean = mean(mean))
+
+dd <- Phenology %>% 
+  filter(pheno.stage == "Flower", pheno.var == "peak", pheno.unit == "DaysSinceSM") %>% 
+  rename(treatment = newTT) %>% 
+  distinct(treatment, species)
+
+
+# meta data
+meta <- expand.grid(species = unique(dd$species),
+                    treatment = unique(dd$treatment))
+meta <- meta %>% 
+  arrange(treatment, species)
+
 
