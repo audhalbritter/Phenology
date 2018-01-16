@@ -15,7 +15,7 @@ options(max.print=1000, dplyr.print_max = 1000)
 
 # LOAD DATA----
 load(file = "PhenoLong.RData", verbose = TRUE)
-load(file = "~/Dropbox/Research/Collaborations1/Aud phenology/PhenoLong.RData", verbose = TRUE)
+load(file = "~/Dropbox/Research/Collaborations1/Aud phenology/180111_PhenoLong.RData", verbose = TRUE)
 
 myData <- Phenology %>% 
   # subset
@@ -77,22 +77,21 @@ table(Data2$treatment, Data2$destSiteID)
 table(Data2$treatment, as.numeric(Data2$treatment))
 
 
-# This may seem a little redundant, but I like having all the data as objects in the workspace so you can work with them later
 y = myData$value.mean
 #y = myData$value
 treatment <- myData$treatment 
-        origSite <- myData$origSiteID
-        destSite <- myData$destSiteID
-        species <- myData$species 
-        origBlock <- myData$origBlockID 
-        destBlock <- myData$destBlockID 
-        Ntotal <- length(y) 
-        NtreatmentLvl <- nlevels(factor(myData$treatment)) 
-        NorigSiteLvl <- nlevels(factor(myData$origSiteID))
-        NdestSiteLvl <- nlevels(factor(myData$destSiteID))
-        NSPLvl <- nlevels(factor(myData$species))
-        NorigBlockLvl <- nlevels(factor(myData$origBlockID))
-        NdestBlockLvl <- nlevels(factor(myData$destBlockID))
+origSite <- myData$origSiteID
+destSite <- myData$destSiteID
+species <- myData$species 
+origBlock <- myData$origBlockID 
+destBlock <- myData$destBlockID 
+Ntotal <- length(y) 
+NtreatmentLvl <- nlevels(factor(myData$treatment)) 
+NorigSiteLvl <- nlevels(factor(myData$origSiteID))
+NdestSiteLvl <- nlevels(factor(myData$destSiteID))
+NSPLvl <- nlevels(factor(myData$species))
+NorigBlockLvl <- nlevels(factor(myData$origBlockID))
+NdestBlockLvl <- nlevels(factor(myData$destBlockID))
 
 
 head(myData)
