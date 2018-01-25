@@ -118,6 +118,11 @@ warmlate.contrasts <- filter(myData2,is.na(warmlate.contrast)==FALSE)
 # Seems there are very few species to compare flowering times across treatments within the same sites
 # We decided to make comparisons at the site level instead of blocks; blocks are replicates within sites
 # Is this assessment correct??
+length(unique(myData$species)) # 77 species
+length(unique(warm.contrasts$species)) # 13 species have warm treatment contrast
+length(unique(late.contrasts$species)) # 18 species
+length(unique(warmlate.contrasts$species)) # 13 species
+
 
 
 myData3 <- myData %>%
