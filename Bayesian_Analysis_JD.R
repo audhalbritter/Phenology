@@ -6,6 +6,7 @@ graphics.off() # This closes all of R's graphics windows.
 rm(list=ls())  # Careful! This clears all of R's memory!
 
 # load libraries
+source('~/Dropbox/Research2/Stat1/R/scripts/Synced.Rprofile.R')
 library("tidyverse")
 library("rjags")
 library("R2jags")
@@ -23,16 +24,18 @@ myData <- Phenology %>%
   select(value, newTT, species, siteID, destSiteID, blockID, destBlockID) %>% 
   rename(treatment = newTT, origSiteID = siteID, origBlockID = blockID) %>% 
   mutate(treatment = factor(treatment, levels = c("Control", "Warmer", "LaterSM", "WarmLate"))) %>% 
-  mutate(treatment = as.numeric(treatment), origSiteID = as.numeric(origSiteID), species = as.numeric(factor(species)), origSiteID = as.numeric(origSiteID), destSiteID = as.numeric(factor(destSiteID)), origBlockID = as.numeric(factor(origBlockID)), destBlockID = as.numeric(factor(destBlockID)))
+  mutate(treatment = as.numeric(treatment), origSiteID = as.numeric(origSiteID), species = as.numeric(factor(species)), origSiteID = as.numeric(origSiteID), destSiteID = as.numeric(factor(destSiteID)), origBlockID = as.numeric(factor(origBlockID)), destBlockID = as.numeric(factor(destBlockID))) %>%
+  as.data.frame()
 
-myData <- as.data.frame(myData)
 head(myData); dim(myData)
 table(myData$origSiteID, myData$destSiteID)
+length(unique(myData$species))
+
 
 ## get a dataset that averages values of blocks with multiple control turfs
-myData <- myData %>%
+temp <- myData %>%
   group_by(species,treatment,origSiteID,destSiteID,origBlockID,destBlockID) %>%
-  summarise(value.mean = mean(value)
+  summarise(num.vals = length(value)
   ) %>%
   as.data.frame()
 
@@ -69,16 +72,15 @@ Pheno.Flr <- filter(Phenology, pheno.stage == "Flower", pheno.var == "peak", phe
 Data2 <- Phenology %>% 
   filter(pheno.stage == "Flower", pheno.var == "peak", pheno.unit == "DaysSinceSM") %>% 
   select(value, newTT, species, siteID, destSiteID, blockID, destBlockID) %>% 
-  rename(treatment = newTT, origSiteID = siteID, origBlockID = blockID) 
-  Data2 <- as.data.frame(Data2)
+  rename(treatment = newTT, origSiteID = siteID, origBlockID = blockID) %>%
+  as.data.frame()
 
 head(Data2); dim(Data2)
 table(Data2$treatment, Data2$destSiteID)
 table(Data2$treatment, as.numeric(Data2$treatment))
 
 
-y = myData$value.mean
-#y = myData$value
+y = myData$value
 treatment <- myData$treatment 
 origSite <- myData$origSiteID
 destSite <- myData$destSiteID
@@ -94,32 +96,33 @@ NorigBlockLvl <- nlevels(factor(myData$origBlockID))
 NdestBlockLvl <- nlevels(factor(myData$destBlockID))
 
 
-head(myData)
-dim(myData)
+## Check this Aud ----
 myData2 <- myData %>%
-  group_by(species,destBlockID) %>%
-  summarise(w2 = ifelse(length(value.mean[treatment==2])>0 & length(value.mean[treatment==1])>0, 1,0)
-            ,warm.contrast = ifelse(w2==1, value.mean[treatment==2] - value.mean[treatment==1], NA)
-            ,w3 = ifelse(length(value.mean[treatment==3])>0 & length(value.mean[treatment==1])>0, 1,0)
-            ,late.contrast = ifelse(w3==1, value.mean[treatment==3] - value.mean[treatment==1], NA)
-            ,w4 = ifelse(length(value.mean[treatment==4])>0 & length(value.mean[treatment==1])>0, 1,0)
-            ,warmlate.contrast = ifelse(w4==1, value.mean[treatment==4] - value.mean[treatment==1], NA)
+#  group_by(species,destBlockID) %>%
+  group_by(species,destSiteID) %>%
+  summarise(w2 = ifelse(length(value[treatment==2])>0 & length(value[treatment==1])>0, 1,0)
+            ,warm.contrast = ifelse(w2==1, mean(value[treatment==2]) - mean(value[treatment==1]), NA)
+            ,w3 = ifelse(length(value[treatment==3])>0 & length(value[treatment==1])>0, 1,0)
+            ,late.contrast = ifelse(w3==1, mean(value[treatment==3]) - mean(value[treatment==1]), NA)
+            ,w4 = ifelse(length(value[treatment==4])>0 & length(value[treatment==1])>0, 1,0)
+            ,warmlate.contrast = ifelse(w4==1, mean(value[treatment==4]) - mean(value[treatment==1]), NA)
   ) %>%
   as.data.frame()
 head(myData2)
 #
 
+## Checking here which species-site combinations have each contrast
 warm.contrasts <- filter(myData2,is.na(warm.contrast)==FALSE)
 late.contrasts <- filter(myData2,is.na(late.contrast)==FALSE)
 warmlate.contrasts <- filter(myData2,is.na(warmlate.contrast)==FALSE)
-# Seems there are very few species to compare flowering times across treatments within the same blocks
-
-
+# Seems there are very few species to compare flowering times across treatments within the same sites
+# We decided to make comparisons at the site level instead of blocks; blocks are replicates within sites
+# Is this assessment correct??
 
 
 myData3 <- myData %>%
   group_by(species, destSiteID, treatment) %>%
-  summarise(mean.value = mean(value.mean)
+  summarise(mean = mean(value)
   ) %>%
   as.data.frame()
 head(myData3); dim(myData3)

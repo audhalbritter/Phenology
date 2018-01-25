@@ -1,9 +1,5 @@
 ### FLOWERING ~ TREATMENT + ORIGINSITE + DESTSITE + (TREATMENT + SITE|SPECIES) + (1|Block) ###
 
-# JD: A few general changes that were necessary:
-# took out some of the data that are not used. In JAGS, all variables entered in the data have to be used somehow in the model
-# distributions need tilde instead of arrow
-# dimensions of parameters always need to match other places the variable is used.   e.g. treatmentCoeff[1] <- 0   said that treatmentCoeff is a vector
 
 model{
   ### LIKELIHOOD

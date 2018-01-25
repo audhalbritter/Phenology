@@ -1,13 +1,15 @@
 ### model3: Plasticity model
 ### FLOWERING ~ TREATMENT + ORIGINSITE + Species + (1|Block)
 
+## Plasticity
+# [treatment, species, origSiteID]
 
 model{
   ### LIKELIHOOD
   for(i in 1:Ntotal){
     
     ### NORMAL DISTRIBUTION
-    y[i] ~ dnorm(mu[i], tau)
+    y[i] ~ dnorm(mu[i], tau[species[i]])
     mu[i] <- treatmentCoeff[treatment[i], species[i], origSite[i]] + blockCoeff[destBlock[i]]
   }
   
@@ -18,7 +20,7 @@ model{
     for(s1 in 1:NorigSiteLvl){
 #    for(s2 in 1:NdestSiteLvl){
       
-      treatmentCoeff[t,sp,s1] ~ dnorm(mean.treatment[t,sp,s1], tau.slope[sp]) # random slope
+      treatmentCoeff[t,sp,s1] ~ dnorm(mean.treatment[t,sp,s1], tau.slope[sp]) 
       mean.treatment[t,sp,s1] ~ dnorm(0, 0.001) 
     }}}
   
@@ -30,9 +32,9 @@ model{
 ## Precision / Variance priors
 
   BlockPrec ~ dgamma(0.001, 0.001)
-  tau ~ dgamma(0.001, 0.001)
    for(sp in 1:(NSPLvl)){  
-   tau.slope[sp] ~ dgamma(0.001, 0.001)  
+     tau ~ dgamma(0.001, 0.001)
+     tau.slope[sp] ~ dgamma(0.001, 0.001)  
     }
   
 
