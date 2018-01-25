@@ -149,7 +149,7 @@ SMDAdapt <- EventDiffDataAdapt %>%
 
 
 EventDiffAdapt <- EventDiffDataAdapt %>% 
-  select(destBlockID, species, value, destSiteID.x, newTT, SMDiff, pheno.unit, pheno.stage, pheno.var) %>%
+  select(destBlockID, species, value, destSiteID, newTT, SMDiff, pheno.unit, pheno.stage, pheno.var) %>%
   group_by(newTT, destBlockID, species, pheno.unit, pheno.stage, pheno.var) %>% 
   # mean value per treatment, origin and destination site and species 
   summarise(N = n(), mean = mean(value, na.rm = TRUE), se = sd(value, na.rm = TRUE)/sqrt(N)) %>% 
