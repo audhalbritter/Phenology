@@ -107,10 +107,7 @@ pheno.long <- pheno15 %>%
   mutate_at(c("first", "peak", "end"), funs(as.numeric)) %>% # make variables numeric (probably not necessary)
   mutate(pheno.stage = substring(pheno.stage, nchar(pheno.stage), nchar(pheno.stage))) %>%  # take last letter from pheno.stage
   gather(key = pheno.var, value = value, -turfID, -species, -pheno.stage) %>% # create pheno.var and gather 4 variable into 1 column
-  left_join(turfs.15, by = "turfID") %>%  # merge data set with turfs.15
-  # calculate average value for all controls
-  group_by(species, pheno.stage, pheno.var, newTT, blockID) %>% 
-  mutate(value = mean(value))
+  left_join(turfs.15, by = "turfID")  # merge data set with turfs.15
 
 
 #### CALCULATE EVENT IN DAYS SINCE SNOWMELT ####
