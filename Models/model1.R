@@ -10,7 +10,7 @@ model{
     
     ### NORMAL DISTRIBUTION
     y[i] ~ dnorm(mu[i], tau[speciesID[i]])
-    mu[i] <- treatmentCoeff[treatmentID[i], speciesID[i], origSiteID[i]] + blockCoeff[destBlockID[i]]
+    mu[i] <- treatmentCoeff[treatmentID[i], speciesID[i], origSiteID[i]] #+ blockCoeff[destBlockID[i]]    # took out block random effect
   }
   
   ### PRIORS ###

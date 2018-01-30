@@ -89,7 +89,7 @@ with(temp, temp[species=="Vio.bif"  & destBlock=="Ram8",])
 # need to get those species-site combinations that have both control and treatment
 myData.check <- myData %>%
   #  group_by(species,destBlockID) %>%
-  group_by(species, destSite) %>%
+  group_by(species, origSite) %>%  # was destSite
   summarise(w2 = ifelse(length(value[treatmentID==2])>0 & length(value[treatmentID==1])>0, 1,0)
             ,warm.contrast = ifelse(w2==1, mean(value[treatmentID==2]) - mean(value[treatmentID==1]), NA)
             ,w3 = ifelse(length(value[treatmentID==3])>0 & length(value[treatmentID==1])>0, 1,0)
@@ -98,7 +98,7 @@ myData.check <- myData %>%
             ,warmlate.contrast = ifelse(w4==1, mean(value[treatmentID==4]) - mean(value[treatmentID==1]), NA)
   ) %>%
   as.data.frame()
-head(myData.check)
+head(myData.check); dim(myData.check)
 #
 
 ## Checking here which species-site combinations have each contrast
@@ -114,14 +114,14 @@ length(unique(late.contrasts$species)) # 18 species
 length(unique(warmlate.contrasts$species)) # 13 species
 
 # remove species for which there are not comparisons for each model
-warm.keep <- paste(warm.contrasts$species, warm.contrasts$destSite,sep='.')
-late.keep <- paste(late.contrasts$species, late.contrasts$destSite,sep='.')
-warmlate.keep <- paste(warmlate.contrasts$species, warmlate.contrasts$destSite,sep='.')
+warm.keep <- paste(warm.contrasts$species, warm.contrasts$origSite,sep='.')
+late.keep <- paste(late.contrasts$species, late.contrasts$origSite,sep='.')
+warmlate.keep <- paste(warmlate.contrasts$species, warmlate.contrasts$origSite,sep='.')
 
 
 ## Assemble data for JAGS model ----
 
-myData$sp.site <- paste(myData$species,myData$destSite,sep='.')
+myData$sp.site <- paste(myData$species,myData$origSite,sep='.')
 
 data.sub <- filter(myData, sp.site %in% warm.keep, treatment != "LaterSM",treatment != "WarmLate" )
 ## Have to reset the IDs given the subset
@@ -142,7 +142,7 @@ temp
 table(temp$num.values)
 
 warm.raw <- data.sub %>%
-  group_by(species, destSite) %>%
+  group_by(species, origSite) %>%
   summarise(mean.warm=mean(value[treatment=="Warmer"])
             ,mean.control=mean(value[treatment=="Control"])
             ,warm.contrast=mean.warm-mean.control
@@ -168,9 +168,9 @@ mod1.data <- list(y = y,
                   Ntotal = Ntotal, 
                   NSPLvl = NSPLvl,
                   NBlockLvl = NdestBlockLvl,   # was origBlock  - should RE be for orig block or for destination block?  Not sure i understand why orig
-                  treatmentID = data.sub$treatmentID, 
-                  origSiteID = data.sub$origSiteID,
-                  destBlockID = data.sub$destBlockID 
+                  treatmentID = data.sub$treatmentID 
+                  ,origSiteID = data.sub$origSiteID
+#                  ,destBlockID = data.sub$destBlockID 
                   # destSite = destSite,
 #                 origBlock = origBlock, 
 #                 NtreatmentLvl = NtreatmentLvl, 
@@ -198,7 +198,7 @@ nc <- 3			## number of chains
 # SPECIFY PARAMETERS - these were somehow making a problem; I have never tried specifying like this; might be possible, but not sure
 #para.names <- c("alpha", paste("treatmentCoeff[", 2:4, "]", sep = ""), paste("spCoeff[", 1:66, "]", sep = ""), paste("origBlockCoeff[", 1:30, "]", sep = ""), "tau")
 
-para.names <- c("warm.treatment","treatmentCoeff","blockCoeff") # "alpha"
+para.names <- c("warm.treatment","treatmentCoeff")#,"blockCoeff") # "alpha"
                 
 # Run model ----
 mod1 <-jags(mod1.data, 
