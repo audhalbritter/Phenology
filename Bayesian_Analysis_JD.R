@@ -141,6 +141,13 @@ temp <- data.sub %>%
 temp
 table(temp$num.values)
 
+warm.raw <- data.sub %>%
+  group_by(species, destSite) %>%
+  summarise(mean.warm=mean(value[treatment=="Warmer"])
+            ,mean.control=mean(value[treatment=="Control"])
+            ,warm.contrast=mean.warm-mean.control
+  )
+warm.raw
 
 
 y = data.sub$value
