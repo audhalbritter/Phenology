@@ -12,48 +12,27 @@ library("rjags")
 library("R2jags")
 
 #--- --- --- --- --- --- --- --- --- --- --- --- --- --- 
-options(max.print=1000, dplyr.print_max = 1000)
+options(max.print=10000, dplyr.print_max = 10000)
 
 # LOAD DATA----
-load(file = "PhenoLong.RData", verbose = TRUE)
+#load(file = "PhenoLong.RData", verbose = TRUE)
 load(file = "~/Dropbox/Research/Collaborations1/Aud phenology/180111_PhenoLong.RData", verbose = TRUE)
 
-myData <- Phenology %>% 
+myData0 <- Phenology %>% 
   # subset
   filter(pheno.stage == "Flower", pheno.var == "peak", pheno.unit == "DaysSinceSM") %>% 
   select(value, newTT, species, siteID, destSiteID, blockID, destBlockID) %>% 
-  rename(treatment = newTT, origSiteID = siteID, origBlockID = blockID) %>% 
+  rename(treatment=newTT, origSite=siteID, origBlock=blockID, destBlock=destBlockID, destSite=destSiteID) %>% 
   mutate(treatment = factor(treatment, levels = c("Control", "Warmer", "LaterSM", "WarmLate"))) %>% 
-  mutate(treatment = as.numeric(treatment), origSiteID = as.numeric(origSiteID), species = as.numeric(factor(species)), origSiteID = as.numeric(origSiteID), destSiteID = as.numeric(factor(destSiteID)), origBlockID = as.numeric(factor(origBlockID)), destBlockID = as.numeric(factor(destBlockID))) %>%
+  mutate(treatmentID = as.numeric(as.factor(treatment)), origSiteID = as.numeric(as.factor(origSite)), speciesID = as.numeric(factor(species)), origSiteID = as.numeric(as.factor(origSite)), destSiteID=as.numeric(as.factor(destSite)), origBlockID = as.numeric(as.factor(origBlock)), destBlockID=as.numeric(as.factor(destBlock))
+         ) %>%
   as.data.frame()
 
-head(myData); dim(myData)
-table(myData$origSiteID, myData$destSiteID)
-length(unique(myData$species))
+head(myData0); dim(myData0)
+table(myData0$origSiteID, myData0$destSiteID)
+length(unique(myData0$species))
 
 
-## get a dataset that averages values of blocks with multiple control turfs
-temp <- myData %>%
-  group_by(species,treatment,origSiteID,destSiteID,origBlockID,destBlockID) %>%
-  summarise(num.vals = length(value)
-  ) %>%
-  as.data.frame()
-
-
-## exploring data structure - multiple values per species-treatment-block?
-Pheno.Flr <- filter(Phenology, pheno.stage == "Flower", pheno.var == "peak", pheno.unit == "DaysSinceSM") 
-  temp <- Pheno.Flr %>%
-  group_by(species,blockID,destBlockID,newTT) %>%
-  summarise(num.turfs=length(unique(turfID))
-            ,num.unique.values=length(unique(value))
-            ,num.values=length(value)
-            ,num.years=length(unique(Year))
-  )
-  temp[temp$newTT!="Control",]
-  temp[temp$newTT=="Control",]
-  with(Pheno.Flr, Pheno.Flr[species=="Vio.bif" & blockID=="Ram6" & destBlockID=="Ram6",])
-  with(Pheno.Flr, Pheno.Flr[species=="Vio.bif"  & destBlockID=="Ram8",])
-  
 # want to calculate how much observed phenology varied among the different control turfs
 # temp2 <- Pheno.Flr %>%
 #   filter(newTT=='Control') %>%
@@ -68,53 +47,64 @@ Pheno.Flr <- filter(Phenology, pheno.stage == "Flower", pheno.var == "peak", phe
 # hist(temp2$value.dif, 40, xlab='Difference in phenol value between control plots\n(within species)')
 
 
-## A version with real site names
-Data2 <- Phenology %>% 
-  filter(pheno.stage == "Flower", pheno.var == "peak", pheno.unit == "DaysSinceSM") %>% 
-  select(value, newTT, species, siteID, destSiteID, blockID, destBlockID) %>% 
-  rename(treatment = newTT, origSiteID = siteID, origBlockID = blockID) %>%
-  as.data.frame()
-
-head(Data2); dim(Data2)
-table(Data2$treatment, Data2$destSiteID)
-table(Data2$treatment, as.numeric(Data2$treatment))
 
 
-y = myData$value
-treatment <- myData$treatment 
-origSite <- myData$origSiteID
-destSite <- myData$destSiteID
-species <- myData$species 
-origBlock <- myData$origBlockID 
-destBlock <- myData$destBlockID 
-Ntotal <- length(y) 
-NtreatmentLvl <- nlevels(factor(myData$treatment)) 
-NorigSiteLvl <- nlevels(factor(myData$origSiteID))
-NdestSiteLvl <- nlevels(factor(myData$destSiteID))
-NSPLvl <- nlevels(factor(myData$species))
-NorigBlockLvl <- nlevels(factor(myData$origBlockID))
-NdestBlockLvl <- nlevels(factor(myData$destBlockID))
-
-
-## Check this Aud ----
-myData2 <- myData %>%
-#  group_by(species,destBlockID) %>%
-  group_by(species,destSiteID) %>%
-  summarise(w2 = ifelse(length(value[treatment==2])>0 & length(value[treatment==1])>0, 1,0)
-            ,warm.contrast = ifelse(w2==1, mean(value[treatment==2]) - mean(value[treatment==1]), NA)
-            ,w3 = ifelse(length(value[treatment==3])>0 & length(value[treatment==1])>0, 1,0)
-            ,late.contrast = ifelse(w3==1, mean(value[treatment==3]) - mean(value[treatment==1]), NA)
-            ,w4 = ifelse(length(value[treatment==4])>0 & length(value[treatment==1])>0, 1,0)
-            ,warmlate.contrast = ifelse(w4==1, mean(value[treatment==4]) - mean(value[treatment==1]), NA)
+## Can average the control plots within a certain destBlock for a species
+cc <- colnames(myData0) ; cc<- cc[-grep("value",cc)]
+  
+myData <- myData0 %>%
+  group_by(.dots=names(myData0)[-grep("value", names(myData0))]) %>%   # group by all but one variable
+  summarise(value = mean(value)
   ) %>%
   as.data.frame()
-head(myData2)
+head(myData); dim(myData)
+
+
+## Checking data ----
+## exploring data structure - multiple values per species-treatment-block?
+check1 <- filter(Phenology, pheno.stage == "Flower", pheno.var == "peak", pheno.unit == "DaysSinceSM") 
+temp <- check1 %>%
+  group_by(species,blockID,destBlockID,newTT) %>%
+  summarise(num.turfs=length(unique(turfID))
+            ,num.unique.values=length(unique(value))
+            ,num.values=length(value)
+            ,num.years=length(unique(Year))
+  )
+temp[temp$newTT!="Control",]
+temp[temp$newTT=="Control",]
+with(check1, check1[species=="Vio.bif" & blockID=="Ram6" & destBlockID=="Ram6",])
+with(check1, check1[species=="Vio.bif"  & destBlockID=="Ram8",])
+
+
+temp <- myData %>%
+  group_by(species,origBlock, destBlock, treatment) %>%
+  summarise(num.values=length(value)
+            )
+temp[temp$treatment!="Control",]
+temp[temp$treatment=="Control",]
+with(temp, temp[species=="Vio.bif" & origBlock=="Ram6" & destBlock=="Ram6",])
+with(temp, temp[species=="Vio.bif"  & destBlock=="Ram8",])
+
+
+# need to get those species-site combinations that have both control and treatment
+myData.check <- myData %>%
+  #  group_by(species,destBlockID) %>%
+  group_by(species, destSite) %>%
+  summarise(w2 = ifelse(length(value[treatmentID==2])>0 & length(value[treatmentID==1])>0, 1,0)
+            ,warm.contrast = ifelse(w2==1, mean(value[treatmentID==2]) - mean(value[treatmentID==1]), NA)
+            ,w3 = ifelse(length(value[treatmentID==3])>0 & length(value[treatmentID==1])>0, 1,0)
+            ,late.contrast = ifelse(w3==1, mean(value[treatmentID==3]) - mean(value[treatmentID==1]), NA)
+            ,w4 = ifelse(length(value[treatmentID==4])>0 & length(value[treatmentID==1])>0, 1,0)
+            ,warmlate.contrast = ifelse(w4==1, mean(value[treatmentID==4]) - mean(value[treatmentID==1]), NA)
+  ) %>%
+  as.data.frame()
+head(myData.check)
 #
 
 ## Checking here which species-site combinations have each contrast
-warm.contrasts <- filter(myData2,is.na(warm.contrast)==FALSE)
-late.contrasts <- filter(myData2,is.na(late.contrast)==FALSE)
-warmlate.contrasts <- filter(myData2,is.na(warmlate.contrast)==FALSE)
+warm.contrasts <- filter(myData.check, is.na(warm.contrast)==FALSE)
+late.contrasts <- filter(myData.check, is.na(late.contrast)==FALSE)
+warmlate.contrasts <- filter(myData.check,is.na(warmlate.contrast)==FALSE)
 # Seems there are very few species to compare flowering times across treatments within the same sites
 # We decided to make comparisons at the site level instead of blocks; blocks are replicates within sites
 # Is this assessment correct??
@@ -123,36 +113,61 @@ length(unique(warm.contrasts$species)) # 13 species have warm treatment contrast
 length(unique(late.contrasts$species)) # 18 species
 length(unique(warmlate.contrasts$species)) # 13 species
 
-
-
-myData3 <- myData %>%
-  group_by(species, destSiteID, treatment) %>%
-  summarise(mean = mean(value)
-  ) %>%
-  as.data.frame()
-head(myData3); dim(myData3)
-myData3[myData3$species==1,]
-
-
-
+# remove species for which there are not comparisons for each model
+warm.keep <- paste(warm.contrasts$species, warm.contrasts$destSite,sep='.')
+late.keep <- paste(late.contrasts$species, late.contrasts$destSite,sep='.')
+warmlate.keep <- paste(warmlate.contrasts$species, warmlate.contrasts$destSite,sep='.')
 
 
 ## Assemble data for JAGS model ----
 
+myData$sp.site <- paste(myData$species,myData$destSite,sep='.')
+
+data.sub <- filter(myData, sp.site %in% warm.keep, treatment != "LaterSM",treatment != "WarmLate" )
+## Have to reset the IDs given the subset
+head(data.sub); dim(data.sub)
+data.sub$treatmentID <- as.numeric(as.factor(data.sub$treatment))
+data.sub$origSiteID <- as.numeric(as.factor(data.sub$origSite))
+data.sub$origBlockID <- as.numeric(as.factor(data.sub$origBlock))
+data.sub$destBlockID <- as.numeric(as.factor(data.sub$destBlock))
+data.sub$destSiteID <- as.numeric(as.factor(data.sub$destSite))
+data.sub$speciesID <- as.numeric(as.factor(data.sub$species))
+
+# [treatment, species, origSiteID]
+temp <- data.sub %>%
+  group_by(species, destSite, treatment) %>%
+  summarise(num.values=length(value)
+  )
+temp
+table(temp$num.values)
+
+
+
+y = data.sub$value
+
+Ntotal <- length(y) 
+NtreatmentLvl <- nlevels(factor(data.sub$treatment)) 
+NorigSiteLvl <- nlevels(factor(data.sub$origSiteID))
+NdestSiteLvl <- nlevels(factor(data.sub$destSiteID))
+NSPLvl <- nlevels(factor(data.sub$species))
+NorigBlockLvl <- nlevels(factor(data.sub$origBlockID))
+NdestBlockLvl <- nlevels(factor(data.sub$destBlockID))
+
+
 # data list
-dataList.mod1 <- list(y = y, 
-                 treatment = treatment, 
-                 # origSite = origSite,
-                 # destSite = destSite,
-                 species = species, 
+mod1.data <- list(y = y, 
+                  speciesID = data.sub$speciesID, 
+                  NorigSiteLvl = NorigSiteLvl,
+                  Ntotal = Ntotal, 
+                  NSPLvl = NSPLvl,
+                  NBlockLvl = NdestBlockLvl,   # was origBlock  - should RE be for orig block or for destination block?  Not sure i understand why orig
+                  treatmentID = data.sub$treatmentID, 
+                  origSiteID = data.sub$origSiteID,
+                  destBlockID = data.sub$destBlockID 
+                  # destSite = destSite,
 #                 origBlock = origBlock, 
-                 destBlock = destBlock, 
-                 Ntotal = Ntotal, 
-                 NtreatmentLvl = NtreatmentLvl, 
-                 # NorigSiteLvl = NorigSiteLvl,
+#                 NtreatmentLvl = NtreatmentLvl, 
                  # NdestSiteLvl = NdestSiteLvl,
-                 NSPLvl = NSPLvl,
-                 NBlockLvl = NdestBlockLvl   # was origBlock  - should RE be for orig block or for destination block?  Not sure i understand why orig
 #                 ,NdestBlockLvl = nlevels(factor(destBlockID))
 )
 
@@ -160,7 +175,7 @@ dataList.mod1 <- list(y = y,
 # Initial values
 mod1.inits<-function(){
   list(
-    tau = 1
+    tau = rep(1,NSPLvl)
   ,BlockPrec=1
   ,tau.slope = rep(1,NSPLvl)
 #    ,alpha = matrix(0,N_sp, N_plots)
@@ -168,24 +183,23 @@ mod1.inits<-function(){
   )
 }
 
-n.iterations <- 5000      ## draws from posterior
-n.burn <- 2000      ## draws to discard as burn-in
-thin.rate <- 5    	## thinning rate
+n.iterations <- 50000      ## draws from posterior
+n.burn <- 10000      ## draws to discard as burn-in
+thin.rate <- 10    	## thinning rate
 nc <- 3			## number of chains
 
 # SPECIFY PARAMETERS - these were somehow making a problem; I have never tried specifying like this; might be possible, but not sure
 #para.names <- c("alpha", paste("treatmentCoeff[", 2:4, "]", sep = ""), paste("spCoeff[", 1:66, "]", sep = ""), paste("origBlockCoeff[", 1:30, "]", sep = ""), "tau")
 
-para.names2 <- c("treatmentCoeff","blockCoeff") # "alpha"
-para.names1 <- c("treatment.contrast","treatmentCoeff","blockCoeff") # "alpha"
+para.names <- c("warm.treatment","treatmentCoeff","blockCoeff") # "alpha"
                 
 # Run model ----
-mod1 <-jags(dataList.mod1, 
+mod1 <-jags(mod1.data, 
                  mod1.inits, 
-                 para.names1, 
+                 para.names, 
                  n.thin=thin.rate, 
                  n.chains=nc, n.burnin=n.burn, n.iter=n.iterations,
-                 model.file="model1.R")
+                 model.file="Models/model1.R")
 
 
 mod1
