@@ -119,9 +119,10 @@ late.keep <- paste(late.contrasts$species, late.contrasts$origSite,sep='.')
 warmlate.keep <- paste(warmlate.contrasts$species, warmlate.contrasts$origSite,sep='.')
 
 
-## Assemble data for JAGS model ----
-
 myData$sp.site <- paste(myData$species,myData$origSite,sep='.')
+
+
+## Assemble data for JAGS WARM model ---- 
 
 data.sub <- filter(myData, sp.site %in% warm.keep, treatment != "LaterSM",treatment != "WarmLate" )
 ## Have to reset the IDs given the subset
@@ -171,72 +172,6 @@ NdestSiteLvl <- nlevels(factor(data.sub$destSiteID))
 NSPLvl <- nlevels(factor(data.sub$species))
 NorigBlockLvl <- nlevels(factor(data.sub$origBlockID))
 NdestBlockLvl <- nlevels(factor(data.sub$destBlockID))
-
-## Model 1 ----
-# data list
-mod1.data <- list(y = y, 
-                  speciesID = data.sub$speciesID, 
-                  NorigSiteLvl = NorigSiteLvl,
-                  Ntotal = Ntotal, 
-                  NSPLvl = NSPLvl,
-                  NBlockLvl = NdestBlockLvl,   # was origBlock  - should RE be for orig block or for destination block?  Not sure i understand why orig
-                  treatmentID = data.sub$treatmentID 
-                  ,origSiteID = data.sub$origSiteID
-#                  ,destBlockID = data.sub$destBlockID 
-                  # destSite = destSite,
-#                 origBlock = origBlock, 
-#                 NtreatmentLvl = NtreatmentLvl, 
-                 # NdestSiteLvl = NdestSiteLvl,
-#                 ,NdestBlockLvl = nlevels(factor(destBlockID))
-)
-
-
-# Initial values
-mod1.inits<-function(){
-  list(
-    tau = rep(1,NSPLvl)
-  ,BlockPrec=1
-  ,tau.slope = rep(1,NSPLvl)
-#    ,alpha = matrix(0,N_sp, N_plots)
-#    ,alpha = rep(0,NSPLvl)
-  )
-}
-
-n.iterations <- 50000      ## draws from posterior
-n.burn <- 10000      ## draws to discard as burn-in
-thin.rate <- 10    	## thinning rate
-nc <- 3			## number of chains
-
-# SPECIFY PARAMETERS - these were somehow making a problem; I have never tried specifying like this; might be possible, but not sure
-#para.names <- c("alpha", paste("treatmentCoeff[", 2:4, "]", sep = ""), paste("spCoeff[", 1:66, "]", sep = ""), paste("origBlockCoeff[", 1:30, "]", sep = ""), "tau")
-
-para.names <- c("warm.treatment","treatmentCoeff")#,"blockCoeff") # "alpha"
-                
-# Run model ----
-mod1 <-jags(mod1.data, 
-                 mod1.inits, 
-                 para.names, 
-                 n.thin=thin.rate, 
-                 n.chains=nc, n.burnin=n.burn, n.iter=n.iterations,
-                 model.file="Models/model1.R")
-
-
-mod1
-mod1.mcmc <- as.mcmc(mod1)
-
-pdf(file="mod1.JAGS.diagnostic.pdf", width = 12, height = 10)
-par(mar=c(4,2,2,1))
-plot(mod1)
-plot(mod1.mcmc)
-dev.off()
-
-
-# jagsModel <- jags.model(file = "TEMPmodel.R", data = dataList, n.chains = 3, n.adapt = 10000)
-# # Continue the MCMC runs with sampling
-# Samples <- coda.samples(jagsModel , variable.names = para.names, n.iter = 10000)
-# summary(Samples)
-
-
 
 
 ## Model 2 ----
@@ -295,15 +230,273 @@ mod2.warm <- mod2.params[grep("warm.treatment",rownames(mod2.params)),]
 mod2.warm.overall <- mod2.params[grep("warm.overall",rownames(mod2.params)),]
 mod2.warm.site <- mod2.params[grep("warm.site",rownames(mod2.params)),]
 
-write.table(sub.table.growth, "sub.table.growth.csv", sep=',', row.names=TRUE)
-
 ## connect model output to species table ----
 
 table(data.sub$species, data.sub$speciesID)
 sptab1 <- cbind(sptab1, mod2.warm)
 sptab1; dim(sptab1)
-
 plot(sptab1$mean, sptab1$warm.contrast)
+
+write.table(sptab1, "model output/sptab1.warm.plasticity.csv", sep=',', row.names=TRUE)
+
+source("print.parameters.R")
+pdf(file="model output/mod2.warm.param.pdf", width = 6, height = 10)
+print.parameters(sptab1, mod2.warm.overall, "days shift in peak flowering\ndue to warming", title='Plasticity model')
+dev.off()
+
+
+
+
+## Assemble data for JAGS LATE model ---- 
+
+data.sub <- droplevels(filter(myData, sp.site %in% late.keep, treatment != "Warmer",treatment != "WarmLate" ))
+## Have to reset the IDs given the subset
+head(data.sub); dim(data.sub)
+data.sub$treatmentID <- as.numeric(as.factor(data.sub$treatment))
+data.sub$origSiteID <- as.numeric(as.factor(data.sub$origSite))
+data.sub$origBlockID <- as.numeric(as.factor(data.sub$origBlock))
+data.sub$destBlockID <- as.numeric(as.factor(data.sub$destBlock))
+data.sub$destSiteID <- as.numeric(as.factor(data.sub$destSite))
+data.sub$speciesID <- as.numeric(as.factor(data.sub$species))
+
+# [treatment, species, origSiteID]
+temp <- data.sub %>%
+  group_by(species, destSite, treatment) %>%
+  summarise(num.values=length(value)
+  )
+temp
+table(temp$num.values)
+
+# species.table.plasticity.late
+sptab3.sites <- data.sub %>%
+  group_by(species, origSite) %>%
+  summarise(mean.late=mean(value[treatment=="lateer"])
+            ,mean.control=mean(value[treatment=="Control"])
+            ,late.contrast=mean.late-mean.control
+  ) %>%
+  as.data.frame()
+sptab3.sites; dim(sptab3.sites)  # 
+
+sptab3 <- data.sub %>%
+  group_by(species) %>%
+  summarise(num.sites = length(unique(origSite))
+            ,mean.late=mean(value[treatment=="lateer"])
+            ,mean.control=mean(value[treatment=="Control"])
+            ,late.contrast=mean.late-mean.control
+  ) %>%
+  as.data.frame()
+sptab3; dim(sptab3)  # 
+
+
+y = data.sub$value
+
+Ntotal <- length(y) 
+NtreatmentLvl <- nlevels(factor(data.sub$treatment)) 
+NorigSiteLvl <- nlevels(factor(data.sub$origSiteID))
+NdestSiteLvl <- nlevels(factor(data.sub$destSiteID))
+NSPLvl <- nlevels(factor(data.sub$species))
+NorigBlockLvl <- nlevels(factor(data.sub$origBlockID))
+NdestBlockLvl <- nlevels(factor(data.sub$destBlockID))
+
+
+## Model 3 ----
+mod3.data <- list(y = y, 
+                  speciesID = data.sub$speciesID, 
+                  NorigSiteLvl = NorigSiteLvl,
+                  Ntotal = Ntotal, 
+                  NSPLvl = NSPLvl,
+                  #                  NBlockLvl = NdestBlockLvl,   # was origBlock  - should RE be for orig block or for destination block?  Not sure i understand why orig
+                  treatmentID = data.sub$treatmentID 
+                  ,origSiteID = data.sub$origSiteID
+)
+
+
+# Initial values
+mod3.inits<-function(){
+  list(
+    tau.sp=1
+    ,tau.blocks = rep(1,NSPLvl)
+    ,tau.sites = rep(1,NSPLvl)
+  )
+}
+
+n.iterations <- 50000      ## draws from posterior
+n.burn <- 10000      ## draws to discard as burn-in
+thin.rate <- 10    	## thinning rate
+nc <- 3			## number of chains
+
+param3 <- c("late.overall","late.treatment","late.site.treat")
+
+# Run model ----
+mod3 <- jags(mod3.data, 
+            mod3.inits, 
+            param3, 
+            n.thin=thin.rate, 
+            n.chains=nc, n.burnin=n.burn, n.iter=n.iterations,
+            model.file="Models/model3.R")
+
+
+mod3
+mod3.mcmc <- as.mcmc(mod3)
+
+pdf(file="mod3.JAGS.diagnostic.pdf", width = 12, height = 10)
+par(mar=c(4,2,2,1))
+plot(mod3)
+plot(mod3.mcmc)
+dev.off()
+
+
+options(scipen=999)
+s.table <- data.frame(signif(mod3$BUGSoutput$summary, 3))
+p.temp <- pnorm(0,s.table$mean,s.table$sd)
+s.table$p <- round(sapply(p.temp, function(x) min(x, 1-x)), 5)
+mod3.params <- select(s.table,-c(X25.,X50.,X75.,Rhat,n.eff))
+mod3.late <- mod3.params[grep("late.treatment",rownames(mod3.params)),]
+mod3.late.overall <- mod3.params[grep("late.overall",rownames(mod3.params)),]
+mod3.late.site <- mod3.params[grep("late.site",rownames(mod3.params)),]
+
+## connect model output to species table ----
+
+table(data.sub$species, data.sub$speciesID)
+sptab3 <- cbind(sptab3, mod3.late)
+sptab3; dim(sptab3)
+plot(sptab3$mean, sptab3$late.contrast)
+
+write.table(sptab3, "model output/sptab3.late.plasticity.csv", sep=',', row.names=TRUE)
+
+source("print.parameters.R")
+pdf(file="model output/mod3.late.param.pdf", width = 6, height = 10)
+print.parameters(sptab3, mod3.late.overall, "days shift in peak flowering\ndue to later season", title='Plasticity model')
+dev.off()
+
+
+
+
+## Assemble data for JAGS Warm-LATE model ---- 
+
+data.sub <- droplevels(filter(myData, sp.site %in% warmlate.keep, treatment != "Warmer",treatment != "LaterSM" ))
+## Have to reset the IDs given the subset
+head(data.sub); dim(data.sub)
+data.sub$treatmentID <- as.numeric(as.factor(data.sub$treatment))
+data.sub$origSiteID <- as.numeric(as.factor(data.sub$origSite))
+data.sub$origBlockID <- as.numeric(as.factor(data.sub$origBlock))
+data.sub$destBlockID <- as.numeric(as.factor(data.sub$destBlock))
+data.sub$destSiteID <- as.numeric(as.factor(data.sub$destSite))
+data.sub$speciesID <- as.numeric(as.factor(data.sub$species))
+
+# [treatment, species, origSiteID]
+temp <- data.sub %>%
+  group_by(species, destSite, treatment) %>%
+  summarise(num.values=length(value)
+  )
+temp
+table(temp$num.values)
+
+# species.table.plasticity.late
+sptab4.sites <- data.sub %>%
+  group_by(species, origSite) %>%
+  summarise(mean.late=mean(value[treatment=="lateer"])
+            ,mean.control=mean(value[treatment=="Control"])
+            ,late.contrast=mean.late-mean.control
+  ) %>%
+  as.data.frame()
+sptab4.sites; dim(sptab4.sites)  # 
+
+sptab4 <- data.sub %>%
+  group_by(species) %>%
+  summarise(num.sites = length(unique(origSite))
+            ,mean.late=mean(value[treatment=="lateer"])
+            ,mean.control=mean(value[treatment=="Control"])
+            ,late.contrast=mean.late-mean.control
+  ) %>%
+  as.data.frame()
+sptab4; dim(sptab4)  # 
+
+
+y = data.sub$value
+
+Ntotal <- length(y) 
+NtreatmentLvl <- nlevels(factor(data.sub$treatment)) 
+NorigSiteLvl <- nlevels(factor(data.sub$origSiteID))
+NdestSiteLvl <- nlevels(factor(data.sub$destSiteID))
+NSPLvl <- nlevels(factor(data.sub$species))
+NorigBlockLvl <- nlevels(factor(data.sub$origBlockID))
+NdestBlockLvl <- nlevels(factor(data.sub$destBlockID))
+
+## Model 4 ----
+mod4.data <- list(y = y, 
+                  speciesID = data.sub$speciesID, 
+                  NorigSiteLvl = NorigSiteLvl,
+                  Ntotal = Ntotal, 
+                  NSPLvl = NSPLvl,
+                  #                  NBlockLvl = NdestBlockLvl,   # was origBlock  - should RE be for orig block or for destination block?  Not sure i understand why orig
+                  treatmentID = data.sub$treatmentID 
+                  ,origSiteID = data.sub$origSiteID
+)
+
+
+# Initial values
+mod4.inits<-function(){
+  list(
+    tau.sp=1
+    ,tau.blocks = rep(1,NSPLvl)
+    ,tau.sites = rep(1,NSPLvl)
+  )
+}
+
+n.iterations <- 50000      ## draws from posterior
+n.burn <- 10000      ## draws to discard as burn-in
+thin.rate <- 10    	## thinning rate
+nc <- 3			## number of chains
+
+param4 <- c("warmlate.overall","warmlate.treatment","warmlate.site.treat")
+
+# Run model ----
+mod4 <- jags(mod4.data, 
+             mod4.inits, 
+             param4, 
+             n.thin=thin.rate, 
+             n.chains=nc, n.burnin=n.burn, n.iter=n.iterations,
+             model.file="Models/model4.R")
+
+
+mod4
+mod4.mcmc <- as.mcmc(mod4)
+
+pdf(file="mod4.JAGS.diagnostic.pdf", width = 12, height = 10)
+par(mar=c(4,2,2,1))
+plot(mod4)
+plot(mod4.mcmc)
+dev.off()
+
+
+options(scipen=999)
+s.table <- data.frame(signif(mod4$BUGSoutput$summary, 3))
+p.temp <- pnorm(0,s.table$mean,s.table$sd)
+s.table$p <- round(sapply(p.temp, function(x) min(x, 1-x)), 5)
+mod4.params <- select(s.table,-c(X25.,X50.,X75.,Rhat,n.eff))
+mod4.warmlate <- mod4.params[grep("warmlate.treatment",rownames(mod4.params)),]
+mod4.warmlate.overall <- mod4.params[grep("warmlate.overall",rownames(mod4.params)),]
+mod4.warmlate.site <- mod4.params[grep("warmlate.site",rownames(mod4.params)),]
+
+## connect model output to species table ----
+
+table(data.sub$species, data.sub$speciesID)
+sptab4 <- cbind(sptab4, mod4.warmlate)
+sptab4; dim(sptab4)
+plot(sptab4$mean, sptab4$warmlate.contrast)
+
+write.table(sptab4, "model output/sptab4.warmlate.plasticity.csv", sep=',', row.names=TRUE)
+
+source("print.parameters.R")
+pdf(file="model output/mod4.warmlate.param.pdf", width = 6, height = 10)
+print.parameters(sptab4, mod4.warmlate.overall, "days shift in peak flowering\ndue to warmlater season", title='Plasticity model')
+dev.off()
+
+
+
+
+
 
 
 
