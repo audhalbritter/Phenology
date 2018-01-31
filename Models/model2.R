@@ -1,55 +1,50 @@
-### FLOWERING ~ TREATMENT + ORIGINSITE + DESTSITE + (TREATMENT + SITE|SPECIES) + (1|Block) ###
+### model2: Plasticity model, but estimating an overall treatment effect
+### FLOWERING ~ TREATMENT + ORIGINSITE + Species 
 
-# model2: 
+## Plasticity
+# [treatment, species, origSiteID]
 
 model{
   ### LIKELIHOOD
   for(i in 1:Ntotal){
     
     ### NORMAL DISTRIBUTION
-    y[i] ~ dnorm(mu[i], tau)
-    
-    ### LINEAR PREDICTOR, SPECIES SPECIFIC
-    
-    mu[i] <- treatmentCoeff[species[i], treatment[i], origSite[i], destSite[i]] + blockCoeff[destBlock[i]]
-
-        # which of these two options is correct? Or what is the difference
-    #mu[i] <- alpha[species[i]] + treatmentCoeff[species[i]] * treatment[i] + origBlockCoeff[origBlock[i]]
-    
-    # Model including Site; do we need to add a random factor for origin and destination block?
-    #mu[i] <- alpha[species[i]] + treatmentCoeff[species[i], treatment[i], origSite[i], destSite[i]] + blockCoeff[block[i]]
-    
+    y[i] ~ dnorm(mu[i], tau.blocks[speciesID[i]])
+    mu[i] <- treatmentCoeff[treatmentID[i], speciesID[i], origSiteID[i]] #+ blockCoeff[destBlockID[i]]    # took out block random effect
   }
   
   ### PRIORS ###
   
-  for(sp in 1:NSPLvl){  # need to loop through all species  
-#    alpha[i] ~ dunif(0, 360) #  random intercept for each sp
-    for(t in 1:NtreatmentLvl){
-    for(s1 in 1:NorigSiteLvl){
-    for(s2 in 1:NdestSiteLvl){
-      
-      treatmentCoeff[sp,t,s1,s2] ~ dnorm(mean.treatment[sp,t,s1,s2], tau.slope[sp]) # random slope
-      mean.treatment[sp,t,s1,s2] ~ dnorm(0, 0.001) 
-
-#      treatmentCoeff[,1] <- 0  # added 
-#      treatmentCoeff[i, j] ~ dnorm(mean.treatment[i, j], tau.slope) # random slope
-#      mean.treatment[i,j] ~ dnorm(0, 0.001) # moved this here - needs same dimensions
-    }}}}
+    for(sp in 1:NSPLvl){  # need to loop through all species  
+      for(t in 1:2){
+        for(s1 in 1:NorigSiteLvl){
+            treatmentCoeff[t,sp,s1] ~ dnorm(mean.treatment0[t,sp], tau.sites[sp]) 
+    }
+        mean.treatment0[t,sp] <- mean.treatment[t,sp] # + ... could put site level covariates here
+        mean.treatment[t,sp] ~ dnorm(warm.treat[t], tau.sp) 
+      }}
   
-# treatmentCoeff[1] <- 0    # JD: this says that treatmentCoeff is a vector; dimensions need to match other places the variable is used 
-
-### PRIOR FOR RANDOM EFFECTS
-  for(i in 1:NBlockLvl){
-    blockCoeff[i] ~ dnorm(0, BlockPrec)
+  for(t in 1:2){
+      warm.treat[t] ~ dnorm(0, .0001)
   }
-  #origBlockCoeff[NorigBlockLvl] <- 0
-
+  
 ## Precision / Variance priors
   
-  BlockPrec ~ dgamma(0.001, 0.001)
-  tau ~ dgamma(0.001, 0.001)
-   for(sp in 1:(NSPLvl)){  
-   tau.slope[sp] ~ dgamma(0.001, 0.001)  
-    }
+  for(sp in 1:(NSPLvl)){  
+    tau.blocks[sp] ~ dgamma(0.001, 0.001)
+    tau.sites[sp] ~ dgamma(0.001, 0.001)  
   }
+  tau.sp ~ dgamma(0.001, 0.001)  
+  
+  ## Contrasts
+  warm.overall <- warm.treat[2] - warm.treat[1]
+    for(sp in 1:NSPLvl){
+      warm.treatment[sp] <- mean.treatment[2,sp] - mean.treatment[1,sp]
+    }
+  
+  for(sp in 1:NSPLvl){
+    for(s1 in 1:NorigSiteLvl){
+    warm.site.treat[sp,s1] <- treatmentCoeff[2,sp,s1] - treatmentCoeff[1,sp,s1]
+    }}
+  
+} # end model

@@ -141,13 +141,25 @@ temp <- data.sub %>%
 temp
 table(temp$num.values)
 
-warm.raw <- data.sub %>%
+# species.table.plasticity.warm
+sptab1.sites <- data.sub %>%
   group_by(species, origSite) %>%
   summarise(mean.warm=mean(value[treatment=="Warmer"])
             ,mean.control=mean(value[treatment=="Control"])
             ,warm.contrast=mean.warm-mean.control
-  )
-warm.raw
+) %>%
+  as.data.frame()
+sptab1.sites; dim(sptab1.sites)  # 
+
+sptab1 <- data.sub %>%
+  group_by(species) %>%
+  summarise(num.sites = length(unique(origSite))
+            ,mean.warm=mean(value[treatment=="Warmer"])
+            ,mean.control=mean(value[treatment=="Control"])
+            ,warm.contrast=mean.warm-mean.control
+  ) %>%
+  as.data.frame()
+sptab1; dim(sptab1)  # 
 
 
 y = data.sub$value
@@ -160,7 +172,7 @@ NSPLvl <- nlevels(factor(data.sub$species))
 NorigBlockLvl <- nlevels(factor(data.sub$origBlockID))
 NdestBlockLvl <- nlevels(factor(data.sub$destBlockID))
 
-
+## Model 1 ----
 # data list
 mod1.data <- list(y = y, 
                   speciesID = data.sub$speciesID, 
@@ -223,6 +235,76 @@ dev.off()
 # # Continue the MCMC runs with sampling
 # Samples <- coda.samples(jagsModel , variable.names = para.names, n.iter = 10000)
 # summary(Samples)
+
+
+
+
+## Model 2 ----
+mod2.data <- list(y = y, 
+                  speciesID = data.sub$speciesID, 
+                  NorigSiteLvl = NorigSiteLvl,
+                  Ntotal = Ntotal, 
+                  NSPLvl = NSPLvl,
+#                  NBlockLvl = NdestBlockLvl,   # was origBlock  - should RE be for orig block or for destination block?  Not sure i understand why orig
+                  treatmentID = data.sub$treatmentID 
+                  ,origSiteID = data.sub$origSiteID
+)
+
+
+# Initial values
+mod2.inits<-function(){
+  list(
+    tau.sp=1
+    ,tau.blocks = rep(1,NSPLvl)
+    ,tau.sites = rep(1,NSPLvl)
+    )
+}
+
+n.iterations <- 50000      ## draws from posterior
+n.burn <- 10000      ## draws to discard as burn-in
+thin.rate <- 10    	## thinning rate
+nc <- 3			## number of chains
+
+param2 <- c("warm.overall","warm.treatment","warm.site.treat")
+
+# Run model ----
+mod2 <-jags(mod2.data, 
+            mod2.inits, 
+            param2, 
+            n.thin=thin.rate, 
+            n.chains=nc, n.burnin=n.burn, n.iter=n.iterations,
+            model.file="Models/model2.R")
+
+
+mod2
+mod2.mcmc <- as.mcmc(mod2)
+
+pdf(file="mod2.JAGS.diagnostic.pdf", width = 12, height = 10)
+par(mar=c(4,2,2,1))
+plot(mod2)
+plot(mod2.mcmc)
+dev.off()
+
+
+options(scipen=999)
+s.table <- data.frame(signif(mod2$BUGSoutput$summary, 3))
+p.temp <- pnorm(0,s.table$mean,s.table$sd)
+s.table$p <- round(sapply(p.temp, function(x) min(x, 1-x)), 5)
+mod2.params <- select(s.table,-c(X25.,X50.,X75.,Rhat,n.eff))
+mod2.warm <- mod2.params[grep("warm.treatment",rownames(mod2.params)),]
+mod2.warm.overall <- mod2.params[grep("warm.overall",rownames(mod2.params)),]
+mod2.warm.site <- mod2.params[grep("warm.site",rownames(mod2.params)),]
+
+write.table(sub.table.growth, "sub.table.growth.csv", sep=',', row.names=TRUE)
+
+## connect model output to species table ----
+
+table(data.sub$species, data.sub$speciesID)
+sptab1 <- cbind(sptab1, mod2.warm)
+sptab1; dim(sptab1)
+
+plot(sptab1$mean, sptab1$warm.contrast)
+
 
 
 
