@@ -173,7 +173,7 @@ NSPLvl <- nlevels(factor(data.sub$species))
 NorigBlockLvl <- nlevels(factor(data.sub$origBlockID))
 NdestBlockLvl <- nlevels(factor(data.sub$destBlockID))
 
-
+# Model 1 is also a warm model but does not have nested effects, so can't pull out the contrasts at different levels like the below models
 ## Model 2 ----
 mod2.data <- list(y = y, 
                   speciesID = data.sub$speciesID, 
@@ -243,8 +243,6 @@ source("print.parameters.R")
 pdf(file="model output/mod2.warm.param.pdf", width = 6, height = 10)
 print.parameters(sptab1, mod2.warm.overall, "days shift in peak flowering\ndue to warming", title='Plasticity model')
 dev.off()
-
-
 
 
 ## Assemble data for JAGS LATE model ---- 
