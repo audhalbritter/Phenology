@@ -5,7 +5,7 @@ library("cowplot")
 #### Common species ####
 # Find species that occur in Control and at least one other treatment, and more than 2 sites  
 dd <- Phenology %>% 
-  filter(pheno.unit == "DaysSinceSM", pheno.stage == "Flower", pheno.var == "first") %>% 
+  filter(pheno.unit == "DaysSinceSM", pheno.stage == "Flower", pheno.var == "peak") %>% 
   select(siteID, species, newTT, value) %>%
   group_by(siteID, species, newTT) %>% 
   summarise(n = n(), mean = mean(value)) %>% 
@@ -78,12 +78,11 @@ EventDiff <- EventDiffData %>%
   mutate(Treatment = factor(Treatment, levels = c("Warmer", "Later SM", "Warm & late SM"))) %>%
   mutate(Shape = factor(Shape, levels = c("alpine-dry", "alpine-intermediate", "alpine-wet", "subalpine-dry", "subalpine-intermediate"))) %>% 
   mutate(Alpha = factor(Alpha, levels = c("alpine-dry", "alpine-intermediate", "alpine-wet", "subalpine-dry", "subalpine-intermediate")))
-  
 
 
 
 EventDiff %>% 
-  filter(pheno.unit == "DaysSinceSM", pheno.stage == "Flower", pheno.var == "first") %>%
+  filter(pheno.unit == "DaysSinceSM", pheno.stage == "Flower", pheno.var == "peak") %>%
   #group_by(species, Treatment) %>%
   #summarise(n = n()) %>% filter(n > 1) %>% distinct(species)
   ggplot(aes(x = SMDiff, y = mean, color = Treatment, shape = Shape, alpha = Alpha)) +
