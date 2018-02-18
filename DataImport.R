@@ -207,7 +207,7 @@ MetaData <- turfs.15 %>%
 
 
 #### SAVE PHENO.LONG ####
-save(Phenology, file = "180111_PhenoLong.RData")
+#save(Phenology, file = "180111_PhenoLong.RData")
 
 
 
