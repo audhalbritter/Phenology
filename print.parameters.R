@@ -1,3 +1,9 @@
+# 
+# P <- sptable1
+# overall <- mod2.warm.overall
+# response.var <- "days shift in peak flowering\ndue to warming"
+# title<-'Plasticity model'
+# 
 
 print.parameters <- function(P, overall, response.var, title){
   xl2 <- min(P$X2.5.)
@@ -13,17 +19,17 @@ print.parameters <- function(P, overall, response.var, title){
   axis(1); axis(2, labels=FALSE, at=1:N)
   mtext(response.var, 1, 3, cex=1)
   mtext(P$species, 2, 1, at=N:1, cex=1, las=1)
-  width.strip <-1
-  for(i in N:1){
+  for(i in 1:N){ # go through the table in order, but plot top to bottom
+    j <- N-i+1 # plot with j
     p.temp <- pnorm(0,P$mean[i],P$sd[i])
     p1 <- min(p.temp, 1-p.temp)
     signif.symbol <- ifelse(p1 < .15 , "*"," ")
     signif.symbol <- ifelse(p1 < .10 , "**", signif.symbol)
     signif.symbol <- ifelse(p1 < .05 , "***", signif.symbol)
-    text(xl, i, signif.symbol, cex=1.8, adj=0)
+    text(xl, j, signif.symbol, cex=1.8, adj=0)
     # denstrip(x=xx, dens=dnorm(xx,P$mean[i],P$sd[i]),at=zz[i], colmax=treat.col, width=width.strip)  
-    points(P$mean[i], i, pch=16)
-    arrows(P$X2.5.[i], P$X97.5.[i], y0=i, y1=i, code=3,angle=90,lwd=1, length=.05)
+    points(P$mean[i], j, pch=16)
+    arrows(P$X2.5.[i], P$X97.5.[i], y0=j, y1=j, code=3,angle=90,lwd=1, length=.05)
   }
   points(overall$mean[i], N+1, pch=16, cex=1.5)
   arrows(overall$X2.5.[i], overall$X97.5.[i], y0=N+1, y1=N+1, code=3,angle=90,lwd=2, length=.05)

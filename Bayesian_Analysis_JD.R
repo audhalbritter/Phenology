@@ -6,7 +6,7 @@ graphics.off() # This closes all of R's graphics windows.
 rm(list=ls())  # Careful! This clears all of R's memory!
 
 # load libraries
-source('~/Dropbox/Research2/Stat1/R/scripts/Synced.Rprofile.R')
+source('~/Google Drive/Research2/Stat1/R/scripts/Synced.Rprofile.R')
 library("tidyverse")
 library("rjags")
 library("R2jags")
@@ -16,7 +16,7 @@ options(max.print=10000, dplyr.print_max = 10000)
 
 # LOAD DATA----
 #load(file = "PhenoLong.RData", verbose = TRUE)
-load(file = "~/Dropbox/Research/Collaborations1/Aud phenology/180111_PhenoLong.RData", verbose = TRUE)
+load(file = "~/Google Drive/Projects1/Aud phenology/180111_PhenoLong.RData", verbose = TRUE)
 
 myData0 <- Phenology %>% 
   # subset
@@ -143,16 +143,16 @@ temp
 table(temp$num.values)
 
 # species.table.plasticity.warm
-sptab1.sites <- data.sub %>%
+sptab2.sites <- data.sub %>%
   group_by(species, origSite) %>%
   summarise(mean.warm=mean(value[treatment=="Warmer"])
             ,mean.control=mean(value[treatment=="Control"])
             ,warm.contrast=mean.warm-mean.control
 ) %>%
   as.data.frame()
-sptab1.sites; dim(sptab1.sites)  # 
+sptab2.sites; dim(sptab2.sites)  # 
 
-sptab1 <- data.sub %>%
+sptab2 <- data.sub %>%
   group_by(species) %>%
   summarise(num.sites = length(unique(origSite))
             ,mean.warm=mean(value[treatment=="Warmer"])
@@ -160,7 +160,7 @@ sptab1 <- data.sub %>%
             ,warm.contrast=mean.warm-mean.control
   ) %>%
   as.data.frame()
-sptab1; dim(sptab1)  # 
+sptab2; dim(sptab2)  # 
 
 
 y = data.sub$value
@@ -173,7 +173,7 @@ NSPLvl <- nlevels(factor(data.sub$species))
 NorigBlockLvl <- nlevels(factor(data.sub$origBlockID))
 NdestBlockLvl <- nlevels(factor(data.sub$destBlockID))
 
-# Model 1 is also a warm model but does not have nested effects, so can't pull out the contrasts at different levels like the below models
+  # Model 1 is also a warm model but does not have nested effects, so can't pull out the contrasts at different levels like the below models
 ## Model 2 ----
 mod2.data <- list(y = y, 
                   speciesID = data.sub$speciesID, 
@@ -195,8 +195,8 @@ mod2.inits<-function(){
     )
 }
 
-n.iterations <- 50000      ## draws from posterior
-n.burn <- 10000      ## draws to discard as burn-in
+n.iterations <- 10000      ## draws from posterior
+n.burn <- 2000      ## draws to discard as burn-in
 thin.rate <- 10    	## thinning rate
 nc <- 3			## number of chains
 
@@ -232,17 +232,18 @@ mod2.warm.site <- mod2.params[grep("warm.site",rownames(mod2.params)),]
 
 ## connect model output to species table ----
 
-table(data.sub$species, data.sub$speciesID)
-sptab1 <- cbind(sptab1, mod2.warm)
-sptab1; dim(sptab1)
-plot(sptab1$mean, sptab1$warm.contrast)
-
-write.table(sptab1, "model output/sptab1.warm.plasticity.csv", sep=',', row.names=TRUE)
+sptable2 <- cbind(sptab2, mod2.warm)
+sptable2; dim(sptable2)
+plot(sptable2$mean, sptable2$warm.contrast)
+abline(0,1, lty=2)
+write.table(sptable2, "model output/sptab1.warm.plasticity.csv", sep=',', row.names=TRUE)
 
 source("print.parameters.R")
 pdf(file="model output/mod2.warm.param.pdf", width = 6, height = 10)
-print.parameters(sptab1, mod2.warm.overall, "days shift in peak flowering\ndue to warming", title='Plasticity model')
+print.parameters(sptable1, mod2.warm.overall, "days shift in peak flowering\ndue to warming", title='Plasticity model')
 dev.off()
+
+
 
 
 ## Assemble data for JAGS LATE model ---- 
@@ -268,7 +269,7 @@ table(temp$num.values)
 # species.table.plasticity.late
 sptab3.sites <- data.sub %>%
   group_by(species, origSite) %>%
-  summarise(mean.late=mean(value[treatment=="lateer"])
+  summarise(mean.late=mean(value[treatment=="LaterSM"])
             ,mean.control=mean(value[treatment=="Control"])
             ,late.contrast=mean.late-mean.control
   ) %>%
@@ -278,7 +279,7 @@ sptab3.sites; dim(sptab3.sites)  #
 sptab3 <- data.sub %>%
   group_by(species) %>%
   summarise(num.sites = length(unique(origSite))
-            ,mean.late=mean(value[treatment=="lateer"])
+            ,mean.late=mean(value[treatment=="LaterSM"])
             ,mean.control=mean(value[treatment=="Control"])
             ,late.contrast=mean.late-mean.control
   ) %>%
@@ -318,8 +319,8 @@ mod3.inits<-function(){
   )
 }
 
-n.iterations <- 50000      ## draws from posterior
-n.burn <- 10000      ## draws to discard as burn-in
+n.iterations <- 10000      ## draws from posterior
+n.burn <- 2000      ## draws to discard as burn-in
 thin.rate <- 10    	## thinning rate
 nc <- 3			## number of chains
 
@@ -355,16 +356,15 @@ mod3.late.site <- mod3.params[grep("late.site",rownames(mod3.params)),]
 
 ## connect model output to species table ----
 
-table(data.sub$species, data.sub$speciesID)
-sptab3 <- cbind(sptab3, mod3.late)
-sptab3; dim(sptab3)
-plot(sptab3$mean, sptab3$late.contrast)
+sptable3 <- cbind(sptab3, mod3.late)
+sptable3; dim(sptable3)
+plot(sptable3$mean, sptable3$late.contrast); abline(0, 1, lty=2)
 
-write.table(sptab3, "model output/sptab3.late.plasticity.csv", sep=',', row.names=TRUE)
+write.table(sptable3, "model output/sptab3.late.plasticity.csv", sep=',', row.names=TRUE)
 
 source("print.parameters.R")
 pdf(file="model output/mod3.late.param.pdf", width = 6, height = 10)
-print.parameters(sptab3, mod3.late.overall, "days shift in peak flowering\ndue to later season", title='Plasticity model')
+print.parameters(sptable3, mod3.late.overall, "days shift in peak flowering\ndue to later season", title='Plasticity model')
 dev.off()
 
 
@@ -393,9 +393,9 @@ table(temp$num.values)
 # species.table.plasticity.late
 sptab4.sites <- data.sub %>%
   group_by(species, origSite) %>%
-  summarise(mean.late=mean(value[treatment=="lateer"])
+  summarise(mean.warmlate=mean(value[treatment=="WarmLate"])
             ,mean.control=mean(value[treatment=="Control"])
-            ,late.contrast=mean.late-mean.control
+            ,warmlate.contrast=mean.warmlate-mean.control
   ) %>%
   as.data.frame()
 sptab4.sites; dim(sptab4.sites)  # 
@@ -403,9 +403,9 @@ sptab4.sites; dim(sptab4.sites)  #
 sptab4 <- data.sub %>%
   group_by(species) %>%
   summarise(num.sites = length(unique(origSite))
-            ,mean.late=mean(value[treatment=="lateer"])
+            ,mean.warmlate=mean(value[treatment=="WarmLate"])
             ,mean.control=mean(value[treatment=="Control"])
-            ,late.contrast=mean.late-mean.control
+            ,warmlate.contrast=mean.warmlate-mean.control
   ) %>%
   as.data.frame()
 sptab4; dim(sptab4)  # 
@@ -442,8 +442,8 @@ mod4.inits<-function(){
   )
 }
 
-n.iterations <- 50000      ## draws from posterior
-n.burn <- 10000      ## draws to discard as burn-in
+n.iterations <- 20000      ## draws from posterior
+n.burn <- 5000      ## draws to discard as burn-in
 thin.rate <- 10    	## thinning rate
 nc <- 3			## number of chains
 
@@ -479,21 +479,25 @@ mod4.warmlate.site <- mod4.params[grep("warmlate.site",rownames(mod4.params)),]
 
 ## connect model output to species table ----
 
-table(data.sub$species, data.sub$speciesID)
-sptab4 <- cbind(sptab4, mod4.warmlate)
-sptab4; dim(sptab4)
-plot(sptab4$mean, sptab4$warmlate.contrast)
+sptable4 <- cbind(sptab4, mod4.warmlate)
+sptable4; dim(sptable4)
+plot(sptable4$mean, sptable4$warmlate.contrast); abline(0,1,lty=2)
 
 write.table(sptab4, "model output/sptab4.warmlate.plasticity.csv", sep=',', row.names=TRUE)
 
 source("print.parameters.R")
 pdf(file="model output/mod4.warmlate.param.pdf", width = 6, height = 10)
-print.parameters(sptab4, mod4.warmlate.overall, "days shift in peak flowering\ndue to warmlater season", title='Plasticity model')
+print.parameters(sptable4, mod4.warmlate.overall, "days shift in peak flowering\ndue to warmlater season", title='Plasticity model')
 dev.off()
 
 
 
-
+pdf(file="model output/mod.compare.pdf", width = 11, height = 5)
+par(mfrow=c(1,3))
+plot(sptable2$warm.contrast,sptable2$mean, bty='l', xlab='Empirical Warm Contrast', ylab='Modeled Warm Contrast'); abline(0,1,lty=2)
+plot(sptable3$late.contrast,sptable3$mean, bty='l', xlab='Empirical Late Contrast', ylab='Modeled Late Contrast'); abline(0,1,lty=2)
+plot(sptable4$warmlate.contrast,sptable4$mean, bty='l', xlab='Empirical WarmLate Contrast', ylab='Modeled WarmLate Contrast'); abline(0,1,lty=2)
+dev.off()
 
 
 
