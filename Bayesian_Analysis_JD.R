@@ -217,6 +217,7 @@ mod2.mcmc <- as.mcmc(mod2)
 pdf(file="mod2.JAGS.diagnostic.pdf", width = 12, height = 10)
 par(mar=c(4,2,2,1))
 plot(mod2)
+gelman.plot(mod2.mcmc)
 plot(mod2.mcmc)
 dev.off()
 
@@ -341,6 +342,7 @@ mod3.mcmc <- as.mcmc(mod3)
 pdf(file="mod3.JAGS.diagnostic.pdf", width = 12, height = 10)
 par(mar=c(4,2,2,1))
 plot(mod3)
+gelman.plot(mod3.mcmc)
 plot(mod3.mcmc)
 dev.off()
 
@@ -464,6 +466,8 @@ mod4.mcmc <- as.mcmc(mod4)
 pdf(file="mod4.JAGS.diagnostic.pdf", width = 12, height = 10)
 par(mar=c(4,2,2,1))
 plot(mod4)
+gelman.plot(mod4.mcmc)
+#gelman.diag(mod4.mcmc)
 plot(mod4.mcmc)
 dev.off()
 
@@ -492,7 +496,7 @@ dev.off()
 
 
 
-pdf(file="model output/mod.compare.pdf", width = 11, height = 5)
+pdf(file="model output/mod.compare.pdf", width = 9, height = 3)
 par(mfrow=c(1,3))
 plot(sptable2$warm.contrast,sptable2$mean, bty='l', xlab='Empirical Warm Contrast', ylab='Modeled Warm Contrast'); abline(0,1,lty=2)
 plot(sptable3$late.contrast,sptable3$mean, bty='l', xlab='Empirical Late Contrast', ylab='Modeled Late Contrast'); abline(0,1,lty=2)
@@ -502,39 +506,4 @@ dev.off()
 
 
 
-
-#------------------------------------------------------------------------------
-# MODEL CHECK
-png(file = "Gelmanplots%d.png", width = 1000, height = 1000)
-gelman.plot(Samples)
-dev.off()
-
-
-png(file = "Traceplots%d.png", width = 1000, height = 1000)
-plot(Samples)
-dev.off()
-
-gelman.diag(Samples)
-
-
-
-#------------------------------------------------------------------------------
-# MODEL OUTPUT
-res <- summary(Samples)
-res$statistics
-
-dd <- as.data.frame(res$quantiles)
-colnames(dd) <- c("Min","oneQuarter", "median", "threeQuarter", "Max")
-
-dd %>% 
-  rownames_to_column(var = "variable") %>% 
-  filter(grepl("treatment", variable)) %>% 
-  mutate(variable = plyr::mapvalues(variable, c("treatmentCoeff[2]", "treatmentCoeff[3]", "treatmentCoeff[4]"), c("Warmer", "LateSM", "WarmLateSM"))) %>% 
-  mutate(variable = factor(variable, levels = c("Warmer", "LateSM", "WarmLateSM"))) %>% 
-  as_tibble() %>% 
-  ggplot(aes(x = variable, y = median, ymin = Min, ymax = Max)) +
-  geom_point() +
-  geom_errorbar(width = 0) +
-  geom_hline(yintercept = 0, color = "grey", linetype = "dashed") +
-  labs(x = "", y = "Credible interval")
 
