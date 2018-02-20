@@ -492,7 +492,7 @@ dev.off()
 
 
 
-pdf(file="model output/mod.compare.pdf", width = 11, height = 5)
+pdf(file="model output/mod.compare.pdf", width = 9, height = 3)
 par(mfrow=c(1,3))
 plot(sptable2$warm.contrast,sptable2$mean, bty='l', xlab='Empirical Warm Contrast', ylab='Modeled Warm Contrast'); abline(0,1,lty=2)
 plot(sptable3$late.contrast,sptable3$mean, bty='l', xlab='Empirical Late Contrast', ylab='Modeled Late Contrast'); abline(0,1,lty=2)
