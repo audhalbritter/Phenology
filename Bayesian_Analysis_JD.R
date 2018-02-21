@@ -923,11 +923,11 @@ dev.off()
 
 
 
-pdf(file="model output/mod.compare.pdf", width = 9, height = 3)
+pdf(file="model output/mod.GEN.compare.pdf", width = 9, height = 3)
 par(mfrow=c(1,3))
-plot(sptable2$warm.contrast,sptable2$mean, bty='l', xlab='Empirical Warm Contrast', ylab='Modeled Warm Contrast'); abline(0,1,lty=2)
-plot(sptable3$late.contrast,sptable3$mean, bty='l', xlab='Empirical Late Contrast', ylab='Modeled Late Contrast'); abline(0,1,lty=2)
-plot(sptable4$warmlate.contrast,sptable4$mean, bty='l', xlab='Empirical WarmLate Contrast', ylab='Modeled WarmLate Contrast'); abline(0,1,lty=2)
+plot(sptable2.GEN$warm.contrast,sptable2.GEN$mean, bty='l', xlab='Empirical Warm Contrast', ylab='Modeled Warm Contrast'); abline(0,1,lty=2)
+plot(sptable3.GEN$late.contrast,sptable3.GEN$mean, bty='l', xlab='Empirical Late Contrast', ylab='Modeled Late Contrast'); abline(0,1,lty=2)
+plot(sptable4.GEN$warmlate.contrast,sptable4.GEN$mean, bty='l', xlab='Empirical WarmLate Contrast', ylab='Modeled WarmLate Contrast'); abline(0,1,lty=2)
 dev.off()
 
 
