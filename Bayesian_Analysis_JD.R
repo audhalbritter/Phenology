@@ -507,3 +507,428 @@ dev.off()
 
 
 
+
+## Genetic models ----
+
+## Plasticity
+# [treatment, species, origSiteID]
+
+## Genetics
+# [treatment, species, destSiteID]
+
+
+
+# need to get those species-site combinations that have both control and treatment
+myData.check <- myData %>%
+  group_by(species, destSite) %>%  # was origSite in Plasticity model
+  summarise(w2 = ifelse(length(value[treatmentID==2])>0 & length(value[treatmentID==1])>0, 1,0)
+            ,warm.contrast = ifelse(w2==1, mean(value[treatmentID==2]) - mean(value[treatmentID==1]), NA)
+            ,w3 = ifelse(length(value[treatmentID==3])>0 & length(value[treatmentID==1])>0, 1,0)
+            ,late.contrast = ifelse(w3==1, mean(value[treatmentID==3]) - mean(value[treatmentID==1]), NA)
+            ,w4 = ifelse(length(value[treatmentID==4])>0 & length(value[treatmentID==1])>0, 1,0)
+            ,warmlate.contrast = ifelse(w4==1, mean(value[treatmentID==4]) - mean(value[treatmentID==1]), NA)
+  ) %>%
+  as.data.frame()
+head(myData.check); dim(myData.check)
+#
+
+## Checking here which species-site combinations have each contrast
+warm.contrasts <- filter(myData.check, is.na(warm.contrast)==FALSE)
+late.contrasts <- filter(myData.check, is.na(late.contrast)==FALSE)
+warmlate.contrasts <- filter(myData.check,is.na(warmlate.contrast)==FALSE)
+# Seems there are very few species to compare flowering times across treatments within the same sites
+# We decided to make comparisons at the site level instead of blocks; blocks are replicates within sites
+# Is this assessment correct??
+length(unique(myData$species)) # 77 species
+length(unique(warm.contrasts$species)) # 13 species have warm treatment contrast
+length(unique(late.contrasts$species)) # 18 species
+length(unique(warmlate.contrasts$species)) # 13 species
+
+# remove species for which there are not comparisons for each model
+warm.keep <- paste(warm.contrasts$species, warm.contrasts$destSite,sep='.')  # changed from orig to dest for Genetic models
+late.keep <- paste(late.contrasts$species, late.contrasts$destSite,sep='.')
+warmlate.keep <- paste(warmlate.contrasts$species, warmlate.contrasts$destSite,sep='.')
+
+myData$sp.site <- paste(myData$species,myData$destSite,sep='.')
+
+## Assemble data for JAGS WARM model ---- 
+
+data.sub <- filter(myData, sp.site %in% warm.keep, treatment != "LaterSM",treatment != "WarmLate" )
+## Have to reset the IDs given the subset
+head(data.sub); dim(data.sub)
+data.sub$treatmentID <- as.numeric(as.factor(data.sub$treatment))
+data.sub$origSiteID <- as.numeric(as.factor(data.sub$origSite))
+data.sub$origBlockID <- as.numeric(as.factor(data.sub$origBlock))
+data.sub$destBlockID <- as.numeric(as.factor(data.sub$destBlock))
+data.sub$destSiteID <- as.numeric(as.factor(data.sub$destSite))
+data.sub$speciesID <- as.numeric(as.factor(data.sub$species))
+
+# [treatment, species, destSiteID]
+temp <- data.sub %>%
+  group_by(species, destSite, treatment) %>%
+  summarise(num.values=length(value)
+  )
+temp
+table(temp$num.values)
+
+# species.table.GENETICS.warm
+sptab2.GEN.sites <- data.sub %>%
+  group_by(species,destSite) %>%
+  summarise(mean.warm=mean(value[treatment=="Warmer"])
+            ,mean.control=mean(value[treatment=="Control"])
+            ,warm.contrast=mean.warm-mean.control
+  ) %>%
+  as.data.frame()
+sptab2.sites; dim(sptab2.sites)  # 
+
+sptab2.GEN <- data.sub %>%
+  group_by(species) %>%
+  summarise(num.sites = length(unique(destSite)) # changed to dest
+            ,mean.warm=mean(value[treatment=="Warmer"])
+            ,mean.control=mean(value[treatment=="Control"])
+            ,warm.contrast=mean.warm-mean.control
+  ) %>%
+  as.data.frame()
+sptab2.GEN; dim(sptab2.GEN)  # 
+
+
+y = data.sub$value
+
+Ntotal <- length(y) 
+NtreatmentLvl <- nlevels(factor(data.sub$treatment)) 
+NorigSiteLvl <- nlevels(factor(data.sub$origSiteID))
+NdestSiteLvl <- nlevels(factor(data.sub$destSiteID))
+NSPLvl <- nlevels(factor(data.sub$species))
+NorigBlockLvl <- nlevels(factor(data.sub$origBlockID))
+NdestBlockLvl <- nlevels(factor(data.sub$destBlockID))
+
+## Model 2 GENETIC ----
+mod2Gen.data <- list(y = y, 
+                  speciesID = data.sub$speciesID, 
+                  NdestSiteLvl = NdestSiteLvl, #NorigSiteLvl = NorigSiteLvl,   # changed frp, orig to dest
+                  Ntotal = Ntotal, 
+                  NSPLvl = NSPLvl,
+                  #                  NBlockLvl = NdestBlockLvl,   # was origBlock  - should RE be for orig block or for destination block?  Not sure i understand why orig
+                  treatmentID = data.sub$treatmentID 
+                  ,destSiteID = data.sub$destSiteID # changed from orig to dest
+)
+
+
+# Initial values
+mod2Gen.inits<-function(){
+  list(
+    tau.sp=1
+    ,tau.blocks = rep(1,NSPLvl)
+    ,tau.sites = rep(1,NSPLvl)
+  )
+}
+
+n.iterations <- 10000      ## draws from posterior
+n.burn <- 5000      ## draws to discard as burn-in
+thin.rate <- 10    	## thinning rate
+nc <- 3			## number of chains
+
+param2 <- c("warm.overall","warm.treatment","warm.site.treat")
+
+# Run mod2Gen model ----
+mod2Gen <-jags(mod2Gen.data, 
+            mod2Gen.inits, 
+            param2, 
+            n.thin=thin.rate, 
+            n.chains=nc, n.burnin=n.burn, n.iter=n.iterations,
+            model.file="Models/model2Gen.R")
+
+
+mod2Gen
+mod2Gen.mcmc <- as.mcmc(mod2Gen)
+
+
+pdf(file="mod2Gen.JAGS.diagnostic.pdf", width = 12, height = 10)
+par(mar=c(4,2,2,1))
+plot(mod2Gen)
+gelman.plot(mod2Gen.mcmc)
+plot(mod2Gen.mcmc)
+dev.off()
+
+
+options(scipen=999)
+s.table <- data.frame(signif(mod2Gen$BUGSoutput$summary, 3))
+p.temp <- pnorm(0,s.table$mean,s.table$sd)
+s.table$p <- round(sapply(p.temp, function(x) min(x, 1-x)), 5)
+mod2Gen.params <- select(s.table,-c(X25.,X50.,X75.,Rhat,n.eff))
+mod2Gen.warm <- mod2Gen.params[grep("warm.treatment",rownames(mod2Gen.params)),]
+mod2Gen.warm.overall <- mod2Gen.params[grep("warm.overall",rownames(mod2Gen.params)),]
+mod2Gen.warm.site <- mod2Gen.params[grep("warm.site",rownames(mod2Gen.params)),]
+
+## connect model output to species table ----
+
+sptable2.GEN <- cbind(sptab2.GEN, mod2Gen.warm)
+sptable2.GEN; dim(sptable2.GEN)
+plot(sptable2.GEN$mean, sptable2.GEN$warm.contrast); abline(0,1, lty=2)
+write.table(sptable2.GEN, "model output/sptable2.GEN.csv", sep=',', row.names=TRUE)
+
+source("print.parameters.R")
+pdf(file="model output/mod2Gen.warm.param.pdf", width = 6, height = 10)
+print.parameters(sptable2.GEN, mod2Gen.warm.overall, "days shift in peak flowering\ndue to warming", title='Genetic model')
+dev.off()
+
+
+
+## Assemble data for JAGS LATE model GENETICS---- 
+
+data.sub <- droplevels(filter(myData, sp.site %in% late.keep, treatment != "Warmer",treatment != "WarmLate" ))
+## Have to reset the IDs given the subset
+head(data.sub); dim(data.sub)
+data.sub$treatmentID <- as.numeric(as.factor(data.sub$treatment))
+data.sub$origSiteID <- as.numeric(as.factor(data.sub$origSite))
+data.sub$origBlockID <- as.numeric(as.factor(data.sub$origBlock))
+data.sub$destBlockID <- as.numeric(as.factor(data.sub$destBlock))
+data.sub$destSiteID <- as.numeric(as.factor(data.sub$destSite))
+data.sub$speciesID <- as.numeric(as.factor(data.sub$species))
+
+# [treatment, species, origSiteID]
+temp <- data.sub %>%
+  group_by(species, destSite, treatment) %>%
+  summarise(num.values=length(value)
+  )
+temp
+table(temp$num.values)
+
+# species.table.plasticity.late
+sptab3.GEN.sites <- data.sub %>%
+  group_by(species, destSite) %>%
+  summarise(mean.late=mean(value[treatment=="LaterSM"])
+            ,mean.control=mean(value[treatment=="Control"])
+            ,late.contrast=mean.late-mean.control
+  ) %>%
+  as.data.frame()
+sptab3.GEN.sites; dim(sptab3.GEN.sites)  # 
+
+sptab3.GEN <- data.sub %>%
+  group_by(species) %>%
+  summarise(num.sites = length(unique(origSite))
+            ,mean.late=mean(value[treatment=="LaterSM"])
+            ,mean.control=mean(value[treatment=="Control"])
+            ,late.contrast=mean.late-mean.control
+  ) %>%
+  as.data.frame()
+sptab3.GEN; dim(sptab3.GEN)  # 
+
+
+y = data.sub$value
+
+Ntotal <- length(y) 
+NtreatmentLvl <- nlevels(factor(data.sub$treatment)) 
+NorigSiteLvl <- nlevels(factor(data.sub$origSiteID))
+NdestSiteLvl <- nlevels(factor(data.sub$destSiteID))
+NSPLvl <- nlevels(factor(data.sub$species))
+NorigBlockLvl <- nlevels(factor(data.sub$origBlockID))
+NdestBlockLvl <- nlevels(factor(data.sub$destBlockID))
+
+
+## Model 3 ----
+mod3Gen.data <- list(y = y, 
+                  speciesID = data.sub$speciesID, 
+                  NdestSiteLvl = NdestSiteLvl, #NorigSiteLvl = NorigSiteLvl,
+                  Ntotal = Ntotal, 
+                  NSPLvl = NSPLvl,
+                  #                  NBlockLvl = NdestBlockLvl,   # was origBlock  - should RE be for orig block or for destination block?  Not sure i understand why orig
+                  treatmentID = data.sub$treatmentID 
+                  ,destSiteID = data.sub$destSiteID
+)
+
+
+# Initial values
+mod3Gen.inits<-function(){
+  list(
+    tau.sp=1
+    ,tau.blocks = rep(1,NSPLvl)
+    ,tau.sites = rep(1,NSPLvl)
+  )
+}
+
+n.iterations <- 10000      ## draws from posterior
+n.burn <- 5000      ## draws to discard as burn-in
+thin.rate <- 10    	## thinning rate
+nc <- 3			## number of chains
+
+param3 <- c("late.overall","late.treatment","late.site.treat")
+
+# Run model ----
+mod3Gen <- jags(mod3Gen.data, 
+             mod3Gen.inits, 
+             param3, 
+             n.thin=thin.rate, 
+             n.chains=nc, n.burnin=n.burn, n.iter=n.iterations,
+             model.file="Models/model3Gen.R")
+
+
+mod3Gen
+mod3Gen.mcmc <- as.mcmc(mod3Gen)
+
+pdf(file="mod3Gen.JAGS.diagnostic.pdf", width = 12, height = 10)
+par(mar=c(4,2,2,1))
+plot(mod3Gen)
+gelman.plot(mod3Gen.mcmc)
+plot(mod3Gen.mcmc)
+dev.off()
+
+
+options(scipen=999)
+s.table <- data.frame(signif(mod3Gen$BUGSoutput$summary, 3))
+p.temp <- pnorm(0,s.table$mean,s.table$sd)
+s.table$p <- round(sapply(p.temp, function(x) min(x, 1-x)), 5)
+mod3Gen.params <- select(s.table,-c(X25.,X50.,X75.,Rhat,n.eff))
+mod3Gen.late <- mod3Gen.params[grep("late.treatment",rownames(mod3Gen.params)),]
+mod3Gen.late.overall <- mod3Gen.params[grep("late.overall",rownames(mod3Gen.params)),]
+mod3Gen.late.site <- mod3Gen.params[grep("late.site",rownames(mod3Gen.params)),]
+
+## connect model output to species table ----
+
+sptable3.GEN <- cbind(sptab3.GEN, mod3Gen.late)
+sptable3.GEN; dim(sptable3.GEN)
+plot(sptable3.GEN$mean, sptable3.GEN$late.contrast); abline(0, 1, lty=2)
+
+write.table(sptable3, "model output/sptab3.late.plasticity.csv", sep=',', row.names=TRUE)
+
+source("print.parameters.R")
+pdf(file="model output/mod3Gen.late.param.pdf", width = 6, height = 10)
+print.parameters(sptable3.GEN, mod3Gen.late.overall, "days shift in peak flowering\ndue to later season", title='Genetics model')
+dev.off()
+
+
+
+
+## Assemble data for Mod4 GENETICS Warm-LATE model ---- 
+
+data.sub <- droplevels(filter(myData, sp.site %in% warmlate.keep, treatment != "Warmer",treatment != "LaterSM" ))
+## Have to reset the IDs given the subset
+head(data.sub); dim(data.sub)
+data.sub$treatmentID <- as.numeric(as.factor(data.sub$treatment))
+data.sub$origSiteID <- as.numeric(as.factor(data.sub$origSite))
+data.sub$origBlockID <- as.numeric(as.factor(data.sub$origBlock))
+data.sub$destBlockID <- as.numeric(as.factor(data.sub$destBlock))
+data.sub$destSiteID <- as.numeric(as.factor(data.sub$destSite))
+data.sub$speciesID <- as.numeric(as.factor(data.sub$species))
+
+# [treatment, species, origSiteID]
+temp <- data.sub %>%
+  group_by(species, destSite, treatment) %>%
+  summarise(num.values=length(value)
+  )
+temp
+table(temp$num.values)
+
+# species.table.plasticity.late
+sptab4.GEN.sites <- data.sub %>%
+  group_by(species, destSite) %>%
+  summarise(mean.warmlate=mean(value[treatment=="WarmLate"])
+            ,mean.control=mean(value[treatment=="Control"])
+            ,warmlate.contrast=mean.warmlate-mean.control
+  ) %>%
+  as.data.frame()
+sptab4.GEN.sites; dim(sptab4.GEN.sites)  # 
+
+sptab4.GEN <- data.sub %>%
+  group_by(species) %>%
+  summarise(num.sites = length(unique(origSite))
+            ,mean.warmlate=mean(value[treatment=="WarmLate"])
+            ,mean.control=mean(value[treatment=="Control"])
+            ,warmlate.contrast=mean.warmlate-mean.control
+  ) %>%
+  as.data.frame()
+sptab4.GEN; dim(sptab4.GEN)  # 
+
+
+y = data.sub$value
+
+Ntotal <- length(y) 
+NtreatmentLvl <- nlevels(factor(data.sub$treatment)) 
+NorigSiteLvl <- nlevels(factor(data.sub$origSiteID))
+NdestSiteLvl <- nlevels(factor(data.sub$destSiteID))
+NSPLvl <- nlevels(factor(data.sub$species))
+NorigBlockLvl <- nlevels(factor(data.sub$origBlockID))
+NdestBlockLvl <- nlevels(factor(data.sub$destBlockID))
+
+## Model 4 ----
+mod4Gen.data <- list(y = y, 
+                  speciesID = data.sub$speciesID, 
+                  NdestSiteLvl = NdestSiteLvl, #NorigSiteLvl = NorigSiteLvl,
+                  Ntotal = Ntotal, 
+                  NSPLvl = NSPLvl,
+                  #                  NBlockLvl = NdestBlockLvl,   # was origBlock  - should RE be for orig block or for destination block?  Not sure i understand why orig
+                  treatmentID = data.sub$treatmentID 
+                  ,destSiteID = data.sub$destSiteID
+)
+
+
+# Initial values
+mod4Gen.inits<-function(){
+  list(
+    tau.sp=1
+    ,tau.blocks = rep(1,NSPLvl)
+    ,tau.sites = rep(1,NSPLvl)
+  )
+}
+
+n.iterations <- 20000      ## draws from posterior
+n.burn <- 5000      ## draws to discard as burn-in
+thin.rate <- 10    	## thinning rate
+nc <- 3			## number of chains
+
+param4Gen <- c("warmlate.overall","warmlate.treatment","warmlate.site.treat")
+
+# Run model ----
+mod4Gen <- jags(mod4Gen.data, 
+             mod4Gen.inits, 
+             param4Gen, 
+             n.thin=thin.rate, 
+             n.chains=nc, n.burnin=n.burn, n.iter=n.iterations,
+             model.file="Models/model4Gen.R")
+
+
+mod4Gen
+mod4Gen.mcmc <- as.mcmc(mod4Gen)
+
+pdf(file="mod4Gen.JAGS.diagnostic.pdf", width = 12, height = 10)
+par(mar=c(4,2,2,1))
+plot(mod4Gen)
+gelman.plot(mod4Gen.mcmc)
+#gelman.diag(mod4Gen.mcmc)
+plot(mod4Gen.mcmc)
+dev.off()
+
+
+options(scipen=999)
+s.table <- data.frame(signif(mod4Gen$BUGSoutput$summary, 3))
+p.temp <- pnorm(0,s.table$mean,s.table$sd)
+s.table$p <- round(sapply(p.temp, function(x) min(x, 1-x)), 5)
+mod4Gen.params <- select(s.table,-c(X25.,X50.,X75.,Rhat,n.eff))
+mod4Gen.warmlate <- mod4Gen.params[grep("warmlate.treatment",rownames(mod4Gen.params)),]
+mod4Gen.warmlate.overall <- mod4Gen.params[grep("warmlate.overall",rownames(mod4Gen.params)),]
+mod4Gen.warmlate.site <- mod4Gen.params[grep("warmlate.site",rownames(mod4Gen.params)),]
+
+## connect model output to species table ----
+
+sptable4.GEN <- cbind(sptab4.GEN, mod4Gen.warmlate)
+sptable4.GEN; dim(sptable4.GEN)
+plot(sptable4.GEN$mean, sptable4.GEN$warmlate.contrast); abline(0,1,lty=2)
+
+write.table(sptab4.GEN, "model output/sptab4.warmlate.GEN.csv", sep=',', row.names=TRUE)
+
+source("print.parameters.R")
+pdf(file="model output/mod4Gen.warmlate.param.pdf", width = 6, height = 10)
+print.parameters(sptable4.GEN, mod4Gen.warmlate.overall, "days shift in peak flowering\ndue to warmlater season", title='Genetics model')
+dev.off()
+
+
+
+pdf(file="model output/mod.compare.pdf", width = 9, height = 3)
+par(mfrow=c(1,3))
+plot(sptable2$warm.contrast,sptable2$mean, bty='l', xlab='Empirical Warm Contrast', ylab='Modeled Warm Contrast'); abline(0,1,lty=2)
+plot(sptable3$late.contrast,sptable3$mean, bty='l', xlab='Empirical Late Contrast', ylab='Modeled Late Contrast'); abline(0,1,lty=2)
+plot(sptable4$warmlate.contrast,sptable4$mean, bty='l', xlab='Empirical WarmLate Contrast', ylab='Modeled WarmLate Contrast'); abline(0,1,lty=2)
+dev.off()
+
+
+
